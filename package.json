@@ -2,13 +2,16 @@
   "name": "bonfire",
   "private": true,
   "license": "MIT",
+  "type": "module",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc -p scripts",
+    "testnet": "node --disable-warning=ExperimentalWarning scripts/testnet.ts"
   },
   "devDependencies": {
+    "@types/node": "24.19.2",
     "typescript": "7.0.2"
   }
 }

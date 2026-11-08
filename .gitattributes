@@ -1,0 +1,2 @@
+# On-chain brief hashes are computed over these exact bytes.
+docs/briefs/** text eol=lf
