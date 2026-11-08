@@ -38,7 +38,8 @@ use types::*;
 pub const DECIMALS: u8 = 18;
 /// Storage deposit held per commitment record (round, account, mission); returned on settlement.
 pub const COMMIT_DEPOSIT: NearToken = NearToken::from_millinear(10);
-/// Minimum NEAR per stoke, so every stoker's storage is paid by the stoke itself.
+/// Minimum NEAR per stoke. A new stoker entry's storage comes from the operating reserve;
+/// this minimum makes filling it cost several times what it drains.
 pub const MIN_STOKE: NearToken = NearToken::from_millinear(10);
 pub const MIN_MISSIONS: usize = 3;
 pub const MAX_MISSIONS: usize = 5;
