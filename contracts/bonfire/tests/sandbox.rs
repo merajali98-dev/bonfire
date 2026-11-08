@@ -86,6 +86,15 @@ impl Fx {
                 "faucet_amount": (1_000 * EMBER).to_string(),
                 "faucet_interval_ms": FAUCET_INTERVAL_MS,
                 "nominate_min_ash": (1_000 * EMBER).to_string(),
+                "rules": {
+                    "budget_bps": 2_500,
+                    "min_budget": NEAR.to_string(),
+                    "initial_threshold": (1_000 * EMBER).to_string(),
+                    "min_threshold": (100 * EMBER).to_string(),
+                    "up_bps": 11_000,
+                    "down_bps": 7_000,
+                    "target_multiple": 40,
+                },
             }))
             .max_gas()
             .transact()
@@ -170,9 +179,8 @@ impl Fx {
         Ok(())
     }
 
-    /// Stoke, nominate and consent to one maximum-size mission per creator, then create the round.
-    async fn open_round(&self, creators: &[&Account], budget: u128, threshold: u128, target: u128, checkpoints: u8) -> Result<(u32, Times)> {
-        self.ok(&self.dist, "stoke", json!({}), budget).await?;
+    /// Nominates one maximum-size mission per creator and has each creator consent.
+    async fn nominate_all(&self, creators: &[&Account]) -> Result<Vec<u32>> {
         let mut nomination_ids = Vec::new();
         for (i, creator) in creators.iter().enumerate() {
             let title = format!("{i}{}", "t".repeat(79));
@@ -182,6 +190,10 @@ impl Fx {
             self.ok(creator, "consent", json!({ "nomination_id": id }), 0).await?;
             nomination_ids.push(id);
         }
+        Ok(nomination_ids)
+    }
+
+    async fn round_args(&self, nomination_ids: &[u32], checkpoints: u8) -> Result<(Value, Times)> {
         let now = self.now_ms().await?;
         let open = now + 20_000;
         let candle = open + 60_000;
@@ -191,9 +203,6 @@ impl Fx {
         let args = json!({ "args": {
             "nomination_ids": nomination_ids,
             "reviewer": self.reviewer.id(),
-            "budget": budget.to_string(),
-            "threshold": threshold.to_string(),
-            "target": target.to_string(),
             "open_at_ms": open,
             "candle_start_ms": candle,
             "backing_close_ms": close,
@@ -201,20 +210,28 @@ impl Fx {
             "review_deadline_ms": review,
             "checkpoints": checkpoints,
         }});
+        Ok((args, Times { open, candle, close }))
+    }
+
+    /// Stokes the Hearth and creates a round. The contract computes its money terms.
+    async fn open_round(&self, creators: &[&Account], stoke: u128, checkpoints: u8) -> Result<(u32, Times)> {
+        self.ok(&self.dist, "stoke", json!({}), stoke).await?;
+        let ids = self.nominate_all(creators).await?;
+        let (args, times) = self.round_args(&ids, checkpoints).await?;
         let round_id = self.ok(&self.curator, "create_round", args, 0).await?.json::<u32>()?;
-        Ok((round_id, Times { open, candle, close }))
+        Ok((round_id, times))
     }
 
     async fn commit(&self, who: &Account, round_id: u32, mission: u8, amount: u128, deposit: u128) -> Result<ExecutionFinalResult> {
         self.ok(who, "commit", json!({ "round_id": round_id, "mission": mission, "amount": amount.to_string() }), deposit).await
     }
 
-    /// Runs a round through acceptance: 10,000 EMBER on mission 0 against a 40,000 target,
-    /// so the payout is 5 NEAR of a 20 NEAR budget. A second backer loses on mission 1.
+    /// Runs a round through acceptance. A 20 NEAR Hearth gives a 5 NEAR budget and a 40,000
+    /// EMBER target, so 10,000 EMBER on mission 0 pays 1.25 NEAR. A second backer loses.
     async fn accepted_round(&self, creator: &Account) -> Result<(u32, u128, Account, Account)> {
         let other_a = self.account("othera", 5).await?;
         let other_b = self.account("otherb", 5).await?;
-        let (round_id, t) = self.open_round(&[creator, &other_a, &other_b], 20 * NEAR, 1_000 * EMBER, 40_000 * EMBER, 1).await?;
+        let (round_id, t) = self.open_round(&[creator, &other_a, &other_b], 20 * NEAR, 1).await?;
         let winner = self.account("backer", 5).await?;
         let loser = self.account("loser", 5).await?;
         self.fund(&winner, 10_000 * EMBER).await?;
@@ -231,7 +248,7 @@ impl Fx {
         assert_eq!(round["round"]["payout_state"], "Available");
         assert_eq!(u(&round["round"]["burned"]), 10_000 * EMBER);
         let payout = u(&round["round"]["payout"]);
-        assert_eq!(payout, 5 * NEAR);
+        assert_eq!(payout, 5 * NEAR / 4);
         Ok((round_id, payout, winner, loser))
     }
 }
@@ -302,7 +319,8 @@ async fn payout_transfer_pays_creator_exactly_once() -> Result<()> {
     assert_eq!(u(&audit["claims_available"]), 0);
     assert_eq!(u(&audit["claims_pending"]), 0);
     assert_eq!(u(&audit["reserved_total"]), 0);
-    assert_eq!(u(&audit["hearth_pool"]), 15 * NEAR);
+    assert_eq!(u(&audit["hearth_pool"]), 20 * NEAR - payout);
+    assert_eq!(u(&audit["next_threshold"]), 1_100 * EMBER);
     assert_eq!(u(&audit["total_burned"]), 10_000 * EMBER);
     assert_eq!(u(&audit["escrow_total"]), 0);
     assert_eq!(u(&audit["deposits_held"]), 0);
@@ -348,6 +366,38 @@ async fn payout_to_deleted_account_restores_available_and_can_retry() -> Result<
     assert_eq!(fx.near_balance(&creator_id).await? - before, payout);
     assert_eq!(fx.round(round_id).await?["round"]["payout_state"], "Paid");
     assert_reconciled(&fx.audit().await?);
+    Ok(())
+}
+
+#[tokio::test]
+async fn curator_cannot_set_a_rounds_money_terms() -> Result<()> {
+    let fx = Fx::new().await?;
+    let mut creators = Vec::new();
+    for i in 0..3 {
+        creators.push(fx.account(&format!("maker{i}"), 5).await?);
+    }
+    let refs: Vec<&Account> = creators.iter().collect();
+    assert_eq!(fx.view("get_next_round_terms", json!({})).await?["funded"], false);
+    fx.ok(&fx.dist, "stoke", json!({}), 8 * NEAR).await?;
+    let ids = fx.nominate_all(&refs).await?;
+    let (args, _) = fx.round_args(&ids, 3).await?;
+
+    for field in ["budget", "threshold", "target"] {
+        let mut attempt = args.clone();
+        attempt["args"][field] = json!("1");
+        let res = fx.call(&fx.curator, "create_round", attempt, 0).await?;
+        assert_fails(&res, "Failed to deserialize input from JSON");
+    }
+    assert_eq!(fx.view("get_round_count", json!({})).await?, 0);
+
+    let terms = fx.view("get_next_round_terms", json!({})).await?;
+    let round_id = fx.ok(&fx.curator, "create_round", args, 0).await?.json::<u32>()?;
+    let round = fx.round(round_id).await?;
+    assert_eq!(u(&round["round"]["budget"]), 2 * NEAR);
+    assert_eq!(u(&round["round"]["threshold"]), 1_000 * EMBER);
+    assert_eq!(u(&round["round"]["target"]), 40_000 * EMBER);
+    assert_eq!(round["round"]["budget"], terms["budget"]);
+    assert_eq!(u(&fx.audit().await?["hearth_pool"]), 6 * NEAR);
     Ok(())
 }
 
@@ -414,13 +464,13 @@ async fn worst_case_round_gas_and_storage() -> Result<()> {
     fx.ok(&fx.curator, "nominate", args, 0).await?;
     metric("reserve: maximum-size nomination (bytes)", fx.storage_usage().await? - usage);
 
-    let (round_id, t) = fx.open_round(&refs, 20 * NEAR, EMBER, 10_000 * EMBER, 12).await?;
+    let (round_id, t) = fx.open_round(&refs, 20 * NEAR, 12).await?;
 
     // `heavy` holds the largest position possible: 5 missions with an add in all 12
     // checkpoints. `solo` is the largest single record, since it also pays for the index entry.
     let heavy = fx.long_account("heavy", 10).await?;
     let solo = fx.long_account("solo", 10).await?;
-    fx.fund(&heavy, 2_000 * EMBER).await?;
+    fx.fund(&heavy, 200_000 * EMBER).await?;
     fx.fund(&solo, 2_000 * EMBER).await?;
 
     let mut heavy_bytes = 0u64;
@@ -430,17 +480,18 @@ async fn worst_case_round_gas_and_storage() -> Result<()> {
     for checkpoint in 0..12u64 {
         fx.advance_to(t.candle + checkpoint * CHECKPOINT_MS + 2_000).await?;
         let deposit = if checkpoint == 0 { COMMIT_DEPOSIT } else { 1 };
+        // solo goes first, so its record also pays for the round's first-spark entry.
+        let before = fx.storage_usage().await?;
+        fx.commit(&solo, round_id, 0, EMBER, deposit).await?;
+        solo_bytes += fx.storage_usage().await? - before;
         for mission in 0..5u8 {
-            let amount = (mission as u128 + 1) * EMBER;
+            let amount = (mission as u128 + 1) * 1_000 * EMBER;
             let before = fx.storage_usage().await?;
             let res = fx.commit(&heavy, round_id, mission, amount, deposit).await?;
             heavy_bytes += fx.storage_usage().await? - before;
             heavy_total += amount;
             last_commit_gas = res.total_gas_burnt;
         }
-        let before = fx.storage_usage().await?;
-        fx.commit(&solo, round_id, 0, EMBER, deposit).await?;
-        solo_bytes += fx.storage_usage().await? - before;
     }
 
     for mission in 0..5u8 {
@@ -464,7 +515,7 @@ async fn worst_case_round_gas_and_storage() -> Result<()> {
     assert_eq!(round["round"]["status"], "AwaitingWork");
     assert_eq!(round["round"]["winner"], 4);
     let k = round["round"]["drawn_checkpoint"].as_u64().unwrap() as u128;
-    let counted = 5 * (k + 1) * EMBER;
+    let counted = 5_000 * (k + 1) * EMBER;
     assert_eq!(u(&round["round"]["counted"]), counted);
 
     let creator = &creators[4];

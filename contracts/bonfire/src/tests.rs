@@ -82,6 +82,19 @@ fn seed_where(round_id: u32, n: u8, pred: impl Fn(u8) -> bool) -> [u8; 32] {
     panic!("no seed found")
 }
 
+/// 20% of a 100 NEAR Hearth is a 20 NEAR budget; threshold 10k and target 40k EMBER.
+fn rules() -> HearthRules {
+    HearthRules {
+        budget_bps: 2_000,
+        min_budget: U128(N),
+        initial_threshold: U128(10_000 * E),
+        min_threshold: U128(1_000 * E),
+        up_bps: 11_000,
+        down_bps: 7_000,
+        target_multiple: 4,
+    }
+}
+
 fn setup() -> Contract {
     at(0);
     seed([7u8; 32]);
@@ -91,7 +104,7 @@ fn setup() -> Contract {
         b.take_storage();
     });
     set(&curator(), 0);
-    let mut c = Contract::new(curator(), dist(), U128(850_000 * E), U128(150_000 * E), U128(1_000 * E), DAY, U128(1_000 * E));
+    let mut c = Contract::new(curator(), dist(), U128(850_000 * E), U128(150_000 * E), U128(1_000 * E), DAY, U128(1_000 * E), rules());
     for i in 0..3 {
         register(&mut c, &creator(i));
     }
@@ -117,11 +130,13 @@ fn hash(i: u8) -> String {
     format!("{:02x}", i).repeat(32)
 }
 
-/// Stoke 100 NEAR, nominate + consent 3 missions, create a round with 20 NEAR budget,
-/// threshold 10k, target 40k EMBER. Returns round id.
+/// Stoke 100 NEAR, nominate + consent 3 missions and create a round. On a fresh Hearth the
+/// rules give it a 20 NEAR budget, threshold 10k and target 40k EMBER. Returns round id.
 fn round(c: &mut Contract) -> u32 {
-    set(&curator(), 100 * N);
-    c.stoke();
+    round_at(c, 0)
+}
+
+fn nominate_three(c: &mut Contract) -> Vec<u32> {
     let start = c.nominations.len();
     for i in 0..3 {
         set(&curator(), 0);
@@ -129,20 +144,29 @@ fn round(c: &mut Contract) -> u32 {
         set(&creator(i), 0);
         c.consent(start + i as u32);
     }
+    (start..start + 3).collect()
+}
+
+fn create(c: &mut Contract, nomination_ids: Vec<u32>, offset: u64) -> u32 {
     set(&curator(), 0);
     c.create_round(CreateRoundArgs {
-        nomination_ids: (start..start + 3).collect(),
+        nomination_ids,
         reviewer: curator(),
-        budget: U128(20 * N),
-        threshold: U128(10_000 * E),
-        target: U128(40_000 * E),
-        open_at_ms: OPEN,
-        candle_start_ms: CANDLE,
-        backing_close_ms: CLOSE,
-        delivery_deadline_ms: DELIVERY,
-        review_deadline_ms: REVIEW,
+        open_at_ms: OPEN + offset,
+        candle_start_ms: CANDLE + offset,
+        backing_close_ms: CLOSE + offset,
+        delivery_deadline_ms: DELIVERY + offset,
+        review_deadline_ms: REVIEW + offset,
         checkpoints: 12,
     })
+}
+
+/// A round whose whole timeline is shifted later by `offset` milliseconds.
+fn round_at(c: &mut Contract, offset: u64) -> u32 {
+    set(&curator(), 100 * N);
+    c.stoke();
+    let ids = nominate_three(c);
+    create(c, ids, offset)
 }
 
 fn commit(c: &mut Contract, who: &AccountId, r: u32, m: u8, amount: u128) {
@@ -560,9 +584,6 @@ attack!(non_curator_cannot_create_round, "ERR_NOT_CURATOR", |c| {
     c.create_round(CreateRoundArgs {
         nomination_ids: vec![0, 1, 2],
         reviewer: user(0),
-        budget: U128(1),
-        threshold: U128(1),
-        target: U128(1),
         open_at_ms: 1,
         candle_start_ms: 2,
         backing_close_ms: 3,
@@ -572,7 +593,7 @@ attack!(non_curator_cannot_create_round, "ERR_NOT_CURATOR", |c| {
     });
 });
 
-attack!(round_budget_cannot_exceed_hearth, "ERR_HEARTH_TOO_LOW", |c| {
+attack!(round_cannot_open_below_minimum_budget, "ERR_HEARTH_TOO_LOW", |c| {
     for i in 0..3 {
         set(&curator(), 0);
         c.nominate(creator(i), "m".into(), "".into(), hash(1));
@@ -583,9 +604,6 @@ attack!(round_budget_cannot_exceed_hearth, "ERR_HEARTH_TOO_LOW", |c| {
     c.create_round(CreateRoundArgs {
         nomination_ids: vec![0, 1, 2],
         reviewer: curator(),
-        budget: U128(1),
-        threshold: U128(1),
-        target: U128(1),
         open_at_ms: 1,
         candle_start_ms: 2,
         backing_close_ms: 3,
@@ -605,9 +623,6 @@ attack!(unconsented_nomination_cannot_enter_round, "ERR_NOT_CONSENTED", |c| {
     c.create_round(CreateRoundArgs {
         nomination_ids: vec![0, 1, 2],
         reviewer: curator(),
-        budget: U128(1),
-        threshold: U128(1),
-        target: U128(1),
         open_at_ms: 1,
         candle_start_ms: 2,
         backing_close_ms: 3,
@@ -714,6 +729,246 @@ fn faucet_registers_and_respects_interval() {
     check(&c, &everyone());
 }
 
+// ======================================================================= rule-based Hearth
+
+/// Start of a later round's timeline, after the first round has closed.
+const LATER: u64 = 10_000;
+
+/// user(8) backs mission 0 with `amount` (none if zero), then `select` runs at close.
+fn back_and_select(c: &mut Contract, r: u32, offset: u64, amount: u128) {
+    if amount > 0 {
+        fund(c, &user(8), amount);
+        at(OPEN + offset);
+        commit(c, &user(8), r, 0, amount);
+    }
+    at(CLOSE + offset);
+    set(&user(9), 0);
+    c.select(r);
+}
+
+fn round_of(c: &Contract, r: u32) -> Round {
+    c.rounds.get(r).unwrap().clone()
+}
+
+#[test]
+fn budget_is_a_share_of_the_pool_at_creation() {
+    let mut c = setup();
+    let r = round(&mut c);
+    let rd = round_of(&c, r);
+    assert_eq!(rd.budget.0, 20 * N);
+    assert_eq!(rd.threshold.0, 10_000 * E);
+    assert_eq!(rd.target.0, 40_000 * E);
+    assert_eq!(c.hearth_pool, 80 * N);
+    let r2 = round(&mut c); // 80 + 100 stoked
+    assert_eq!(round_of(&c, r2).budget.0, 36 * N);
+    check(&c, &everyone());
+}
+
+#[test]
+fn smallest_funded_pool_opens_a_round() {
+    let mut c = setup();
+    set(&curator(), 5 * N);
+    c.stoke();
+    let ids = nominate_three(&mut c);
+    let r = create(&mut c, ids, 0);
+    assert_eq!(round_of(&c, r).budget.0, N);
+}
+
+attack!(pool_just_below_minimum_cannot_open_a_round, "ERR_HEARTH_TOO_LOW", |c| {
+    set(&curator(), 5 * N - 1);
+    c.stoke();
+    let ids = nominate_three(&mut c);
+    create(&mut c, ids, 0);
+});
+
+#[test]
+fn next_round_terms_match_what_create_round_computes() {
+    let mut c = setup();
+    set(&curator(), 0);
+    assert!(!c.get_next_round_terms().funded);
+    set(&curator(), 100 * N);
+    c.stoke();
+    let terms = c.get_next_round_terms();
+    assert!(terms.funded);
+    let ids = nominate_three(&mut c);
+    let r = create(&mut c, ids, 0);
+    let rd = round_of(&c, r);
+    assert_eq!((terms.budget.0, terms.threshold.0, terms.target.0), (rd.budget.0, rd.threshold.0, rd.target.0));
+}
+
+#[test]
+fn a_winner_raises_the_next_threshold_and_target() {
+    let mut c = setup();
+    let r = round(&mut c);
+    back_and_select(&mut c, r, 0, 20_000 * E);
+    assert_eq!(round_of(&c, r).status, RoundStatus::AwaitingWork);
+    assert_eq!(c.next_threshold, 11_000 * E);
+    assert_eq!(round_of(&c, r).threshold.0, 10_000 * E, "the existing round never changes");
+    let r2 = round_at(&mut c, LATER);
+    assert_eq!(round_of(&c, r2).threshold.0, 11_000 * E);
+    assert_eq!(round_of(&c, r2).target.0, 44_000 * E);
+}
+
+#[test]
+fn nothing_reaching_threshold_lowers_it() {
+    let mut c = setup();
+    let r = round(&mut c);
+    back_and_select(&mut c, r, 0, 9_999 * E);
+    assert_eq!(round_of(&c, r).status, RoundStatus::FailedSelection);
+    assert_eq!(c.next_threshold, 7_000 * E);
+    let r2 = round_at(&mut c, LATER);
+    assert_eq!(round_of(&c, r2).threshold.0, 7_000 * E);
+}
+
+#[test]
+fn a_round_with_no_commitments_lowers_the_threshold() {
+    let mut c = setup();
+    let r = round(&mut c);
+    back_and_select(&mut c, r, 0, 0);
+    assert_eq!(round_of(&c, r).status, RoundStatus::FailedSelection);
+    assert_eq!(c.next_threshold, 7_000 * E);
+    check(&c, &everyone());
+}
+
+#[test]
+fn a_tie_at_or_above_threshold_leaves_it_alone() {
+    let mut c = setup();
+    let r = round(&mut c);
+    fund(&mut c, &user(0), 15_000 * E);
+    fund(&mut c, &user(1), 15_000 * E);
+    at(OPEN);
+    commit(&mut c, &user(0), r, 0, 15_000 * E);
+    commit(&mut c, &user(1), r, 1, 15_000 * E);
+    at(CLOSE);
+    set(&user(2), 0);
+    c.select(r);
+    assert_eq!(round_of(&c, r).status, RoundStatus::FailedSelection);
+    assert_eq!(c.next_threshold, 10_000 * E);
+}
+
+#[test]
+fn threshold_never_falls_below_the_floor() {
+    let mut c = setup();
+    c.next_threshold = 1_200 * E;
+    let r = round(&mut c);
+    back_and_select(&mut c, r, 0, 0);
+    assert_eq!(c.next_threshold, 1_000 * E);
+}
+
+#[test]
+fn threshold_stays_within_floor_and_ceiling() {
+    use crate::math::adjust_threshold;
+    assert_eq!(adjust_threshold(1_000, 11_000, 100, 10_000), 1_100);
+    assert_eq!(adjust_threshold(1_000, 7_000, 100, 10_000), 700);
+    assert_eq!(adjust_threshold(120, 7_000, 100, 10_000), 100);
+    assert_eq!(adjust_threshold(9_500, 11_000, 100, 10_000), 10_000);
+}
+
+#[test]
+fn rejected_or_expired_work_does_not_move_the_threshold() {
+    let mut c = setup();
+    let r = selected_round(&mut c);
+    assert_eq!(c.next_threshold, 11_000 * E);
+    set(&creator(0), 0);
+    c.submit(r, hash(3), "u".into());
+    set(&curator(), 0);
+    c.reject(r);
+    assert_eq!(c.next_threshold, 11_000 * E);
+
+    let mut c = setup();
+    let r = selected_round(&mut c);
+    at(DELIVERY);
+    set(&user(7), 0);
+    c.expire(r);
+    assert_eq!(c.next_threshold, 11_000 * E);
+}
+
+#[test]
+fn overlapping_rounds_each_move_the_threshold_once() {
+    let mut c = setup();
+    let a = round(&mut c);
+    let b = round(&mut c);
+    assert_eq!(round_of(&c, b).threshold.0, 10_000 * E, "created before any select");
+    fund(&mut c, &user(0), 20_000 * E);
+    at(OPEN);
+    commit(&mut c, &user(0), a, 0, 20_000 * E);
+    at(CLOSE);
+    set(&user(9), 0);
+    c.select(a);
+    assert_eq!(c.next_threshold, 11_000 * E);
+    c.select(b);
+    assert_eq!(c.next_threshold, 7_700 * E);
+    assert_eq!(round_of(&c, a).threshold.0, 10_000 * E);
+    assert_eq!(round_of(&c, b).threshold.0, 10_000 * E);
+    let later = round_at(&mut c, LATER);
+    assert_eq!(round_of(&c, later).threshold.0, 7_700 * E);
+    check(&c, &everyone());
+}
+
+#[test]
+fn invalid_rules_are_refused() {
+    let supply = 1_000_000 * E;
+    assert!(rules().is_valid(supply));
+    let cases: [fn(&mut HearthRules); 10] = [
+        |r| r.budget_bps = 0,
+        |r| r.budget_bps = 10_001,
+        |r| r.min_budget = U128(0),
+        |r| r.min_threshold = U128(0),
+        |r| r.min_threshold = U128(10_001 * E),
+        |r| r.initial_threshold = U128(1_000_001 * E),
+        |r| r.up_bps = 9_999,
+        |r| r.down_bps = 0,
+        |r| r.down_bps = 10_001,
+        |r| r.target_multiple = 0,
+    ];
+    for (i, breaks) in cases.iter().enumerate() {
+        let mut bad = rules();
+        breaks(&mut bad);
+        assert!(!bad.is_valid(supply), "case {i}");
+    }
+    let mut overflowing = rules();
+    overflowing.up_bps = u32::MAX;
+    assert!(!overflowing.is_valid(u128::MAX / 2));
+}
+
+attack!(new_refuses_invalid_rules, "ERR_BAD_PARAMS", |c| {
+    let _ = c.get_round_count();
+    let mut bad = rules();
+    bad.up_bps = 1;
+    Contract::new(curator(), dist(), U128(E), U128(E), U128(E), DAY, U128(E), bad);
+});
+
+#[test]
+fn round_args_refuse_budget_threshold_and_target() {
+    let base = near_sdk::serde_json::json!({
+        "nomination_ids": [0, 1, 2], "reviewer": "a.testnet", "open_at_ms": 1, "candle_start_ms": 2,
+        "backing_close_ms": 3, "delivery_deadline_ms": 4, "review_deadline_ms": 5, "checkpoints": 1,
+    });
+    assert!(near_sdk::serde_json::from_value::<CreateRoundArgs>(base.clone()).is_ok());
+    for field in ["budget", "threshold", "target"] {
+        let mut args = base.clone();
+        args[field] = "1".into();
+        assert!(near_sdk::serde_json::from_value::<CreateRoundArgs>(args).is_err(), "{field}");
+    }
+}
+
+#[test]
+fn first_spark_records_the_first_backer_only() {
+    let mut c = setup();
+    let r = round(&mut c);
+    assert!(round_of(&c, r).first_spark.is_none());
+    fund(&mut c, &user(0), 100 * E);
+    fund(&mut c, &user(1), 100 * E);
+    at(OPEN);
+    commit(&mut c, &user(0), r, 0, 10 * E);
+    commit(&mut c, &user(1), r, 1, 50 * E);
+    assert_eq!(round_of(&c, r).first_spark, Some(user(0)));
+    set(&user(0), 0);
+    c.withdraw(r, 0, U128(10 * E));
+    assert_eq!(round_of(&c, r).first_spark, Some(user(0)), "the record stands");
+    assert_eq!(c.ash_of(&user(0)), 0, "it carries no Ash");
+}
+
 // ======================================================================= randomized
 
 /// xorshift64 — deterministic pseudo-random operation sequences.
@@ -769,6 +1024,7 @@ fn randomized_rounds_conserve_tokens_and_near() {
         set(&users[0], 0);
         c.select(r);
         let status = c.rounds.get(r).unwrap().status;
+        assert!([7_000 * E, 10_000 * E, 11_000 * E].contains(&c.next_threshold), "run {run}: threshold moved once by rule");
         if status == RoundStatus::AwaitingWork {
             let w = c.rounds.get(r).unwrap().winner.unwrap() as usize;
             set(&creator(w), 0);
