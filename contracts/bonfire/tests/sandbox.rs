@@ -176,7 +176,7 @@ impl Fx {
         let mut nomination_ids = Vec::new();
         for (i, creator) in creators.iter().enumerate() {
             let title = format!("{i}{}", "t".repeat(79));
-            let brief_uri = format!("https://example.test/{}", "u".repeat(236));
+            let brief_uri = format!("https://example.test/{}", "u".repeat(235));
             let args = json!({ "creator": creator.id(), "title": title, "brief_uri": brief_uri, "brief_hash": WORK_HASH });
             let id = self.ok(&self.curator, "nominate", args, 0).await?.json::<u32>()?;
             self.ok(creator, "consent", json!({ "nomination_id": id }), 0).await?;
