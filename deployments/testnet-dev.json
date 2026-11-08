@@ -11,7 +11,8 @@
     "maker2": "bonfire-meraj-maker2.testnet",
     "maker3": "bonfire-meraj-maker3.testnet",
     "backer1": "bonfire-meraj-backer1.testnet",
-    "backer2": "bonfire-meraj-backer2.testnet"
+    "backer2": "bonfire-meraj-backer2.testnet",
+    "guests": "bonfire-meraj-guests.testnet"
   },
   "wasm_sha256": "ffe5826b992e05a4286921c2e08d6fcc02f34230376f1b75b51477d06a809d10",
   "code_hash": "JDuwek4WaLnzWSsaVLiSmMRMRHXzgV9PJHUp9yt19Qb1",
@@ -226,6 +227,54 @@
       "signer": "bonfire-meraj-dist.testnet",
       "tx_hash": "HYN9yS3g3yqzgq1pozmg5ShNg2qtA2MudEK7KGEcdnZw",
       "at": "2026-11-08T18:05:16.007Z"
+    },
+    {
+      "action": "create account guests",
+      "signer": "bonfire-meraj-guests.testnet",
+      "tx_hash": "F3US2tYMaNPu5uno3TW7YFSK6PqPh4oipJhSEwDSABBY",
+      "at": "2026-11-08T18:36:39.139Z"
+    },
+    {
+      "action": "nominate",
+      "signer": "bonfire-meraj-curator.testnet",
+      "tx_hash": "MBTU9HgwPDD99cdGqeEnUiXjKb6uxSdfgoQQ8ArYXZK",
+      "at": "2026-11-08T18:37:43.213Z"
+    },
+    {
+      "action": "consent",
+      "signer": "bonfire-meraj-maker1.testnet",
+      "tx_hash": "92S8nf9EvNn8xMJRHwqxDzdXmXcLhTcZEMW5uMDAYLaJ",
+      "at": "2026-11-08T18:37:55.130Z"
+    },
+    {
+      "action": "nominate",
+      "signer": "bonfire-meraj-curator.testnet",
+      "tx_hash": "FbY7s9PoooHFispQgHF8V1jNPDsBsqiKMn7br692bL4g",
+      "at": "2026-11-08T18:38:15.287Z"
+    },
+    {
+      "action": "consent",
+      "signer": "bonfire-meraj-maker2.testnet",
+      "tx_hash": "8cvxfiWvsLBS6KCRkrNQLgVsopWAc44f5HDw5gBEwHSJ",
+      "at": "2026-11-08T18:38:40.577Z"
+    },
+    {
+      "action": "nominate",
+      "signer": "bonfire-meraj-curator.testnet",
+      "tx_hash": "GznuJueKdP64qAjGQwNSBbcqCjZi4zGacZz9hsUCkyZY",
+      "at": "2026-11-08T18:38:44.983Z"
+    },
+    {
+      "action": "consent",
+      "signer": "bonfire-meraj-maker3.testnet",
+      "tx_hash": "hw2NQfna9bzHqDKpHLWLwP3WthxfouV4DTSjfTuvmJw",
+      "at": "2026-11-08T18:38:52.828Z"
+    },
+    {
+      "action": "create_round",
+      "signer": "bonfire-meraj-curator.testnet",
+      "tx_hash": "CE5ucTmzTWFMvzg8S8rYfVhsHrCvqyQgTVwrQ9tzyEML",
+      "at": "2026-11-08T18:39:04.898Z"
     }
   ]
 }

@@ -1,0 +1,9 @@
+# Upload only what the web app builds from.
+/*
+!/apps
+!/packages
+!/package.json
+!/package-lock.json
+**/node_modules
+**/dist
+**/.env*

@@ -19,7 +19,9 @@ To enable it, run `npm run testnet -- guests` from the repository root. That cre
 
 ## Hosting on Vercel
 
-Import the repository, set **Root Directory** to `apps/web`, and add these environment variables:
+The site is at https://bonfire-opal.vercel.app. To release from a checkout, run `vercel deploy --prod` from the repository root; `.vercelignore` limits the upload to the app and its shared packages. `npm run testnet -- guests-vercel` stores the guest key and redeploys.
+
+The project uses **Root Directory** `apps/web` and these environment variables:
 
 | Name | Value |
 | --- | --- |

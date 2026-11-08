@@ -3,6 +3,7 @@ target/
 node_modules/
 dist/
 .next/
+.vercel/
 *.log
 .env
 .env.*
@@ -12,3 +13,5 @@ dist/
 *.pem
 **/credentials/
 .near-credentials/
+.vercel
+.env*

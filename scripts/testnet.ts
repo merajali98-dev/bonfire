@@ -5,7 +5,7 @@
  * Keys stay in the near CLI's legacy keychain (~/.near-credentials) and never enter the repo.
  * The manifest in deployments/ records only account IDs, the code hash and transaction hashes.
  */
-import { execFile } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -738,6 +738,23 @@ async function cmdGuests(): Promise<void> {
   console.log("For the hosted site, add the same two values as Vercel environment variables.");
 }
 
+/** Sends the guest parent's testnet key to Vercel over stdin, then redeploys so it takes effect. */
+function cmdGuestsVercel(): Promise<void> {
+  const env = readFileSync(join(ROOT, "apps", "web", ".env.local"), "utf8");
+  const key = env.match(/^GUEST_SECRET_KEY=(.+)$/m)?.[1]?.trim();
+  if (!key) throw new Error("No guest key found. Run: npm run testnet -- guests");
+  const vercel = (args: string[], input?: string) => {
+    const result = spawnSync("vercel", args, { cwd: ROOT, shell: true, encoding: "utf8", input, windowsHide: true });
+    if (result.status !== 0) throw new Error(`vercel ${args[0]} failed. ${result.stderr || result.stdout}`);
+    return result.stdout;
+  };
+  vercel(["env", "add", "GUEST_SECRET_KEY", "production", "--sensitive", "--force", "--yes"], key);
+  console.log("Guest key stored in Vercel. Redeploying.");
+  vercel(["deploy", "--prod", "--yes"]);
+  console.log("Done. Guest accounts are on for the production site.");
+  return Promise.resolve();
+}
+
 /** The whole first deployment in one go. Every step skips work that is already done. */
 async function cmdFirstRun(): Promise<void> {
   await cmdAccounts();
@@ -766,6 +783,7 @@ const COMMANDS: Record<string, () => Promise<void>> = {
   demo: cmdDemo,
   "first-run": cmdFirstRun,
   guests: cmdGuests,
+  "guests-vercel": cmdGuestsVercel,
 };
 
 async function main(): Promise<void> {
