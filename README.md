@@ -35,7 +35,17 @@ Sandbox integration tests run the built wasm on a local NEAR node. The node bina
 cargo test --test sandbox -- --nocapture --test-threads=1
 ```
 
-Measured at the worst case (5 missions, 12 checkpoints, 64-character account IDs): `settle` burns 7.1 TGas, `commit` 4.0 TGas, `select` 2.6 TGas, and the payout callback 2.2 TGas of its 10 TGas allowance. The largest commitment record uses 472 bytes; its 0.01 NEAR deposit covers 1,000.
+Measured at the worst case (5 missions, 12 checkpoints, 64-character account IDs): `settle` burns 7.1 TGas, `commit` 4.0 TGas, `select` 2.6 TGas, and the payout callback 2.2 TGas of its 10 TGas allowance. The largest commitment record uses 540 bytes; its 0.01 NEAR deposit covers 1,000.
+
+## How a round's terms are set
+
+The contract computes every round's money terms from rules fixed at initialization. The `create_round` call refuses any budget, threshold or target passed to it.
+
+- **Budget:** a fixed share of the Hearth at creation, with a minimum below which no round can open.
+- **Threshold:** the next round's threshold rises after a round finds a winner and falls when nothing reaches it. A tie at or above it leaves it alone, and rejected or expired work doesn't move it.
+- **Target:** a fixed multiple of the threshold.
+
+The curator still chooses which consented missions enter a round, its time windows and its reviewer, and the reviewer judges the work. The current rule values in `scripts/testnet.ts` are development settings and are not final.
 
 ## Assistance tools and dependencies
 
