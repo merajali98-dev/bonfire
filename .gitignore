@@ -1,0 +1,14 @@
+# Build output
+target/
+node_modules/
+dist/
+.next/
+*.log
+.env
+.env.*
+!.env.example
+
+# Local keys / credentials
+*.pem
+**/credentials/
+.near-credentials/
