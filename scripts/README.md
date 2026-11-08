@@ -23,14 +23,14 @@ npm run testnet -- demo                       # about 5 minutes: commit, candle,
 npm run testnet -- status
 ```
 
-The wasm locks about 3.2 NEAR, and the faucet gives each account about 10 NEAR. The stoke comes from its own account for that reason, so round budgets of 1 to 3 NEAR are realistic.
+The wasm locks about 3.2 NEAR, and the faucet gives each account about 10 NEAR. The stoke comes from its own account for that reason, so round budgets of 1 to 3 NEAR are realistic. A round's budget is 25% of the Hearth and must be at least 1 NEAR.
 
 A deployment holds one contract state. To deploy code with a different state layout, move the manifest aside and start again with a new prefix.
 
 ## Running a round
 
 ```sh
-npm run testnet -- round --set round-1 --backing 12h --candle 2h --checkpoints 12 --delivery 24h --review 12h --budget 2 --threshold 10000 --target 40000
+npm run testnet -- round --set round-1 --backing 12h --candle 2h --checkpoints 12 --delivery 24h --review 12h
 npm run testnet -- commit <round> <mission> <ember> --as backer1
 npm run testnet -- select <round>
 npm run testnet -- submit <round> --file <artifact> --uri <url>
@@ -40,6 +40,6 @@ npm run testnet -- settle-all <round> --accounts alice.testnet,bob.testnet
 npm run testnet -- expire <round>                # after a missed deadline
 ```
 
-`--as` takes a role from the manifest or a full account ID. `--backing` is the whole backing period, and the candle is its final part.
+`--as` takes a role from the manifest or a full account ID. `--backing` is the whole backing period, and the candle is its final part. The curator picks the missions, time windows and reviewer; the contract computes each round's budget, threshold and target, and `status` shows what the next round would get.
 
 `settle-all` covers the accounts in the manifest plus any in `--accounts`, because the contract keeps no list of who backed a round. Anyone can settle any account with `settle <round> <account>`.

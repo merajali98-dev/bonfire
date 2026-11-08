@@ -1,5 +1,5 @@
 use crate::events::emit;
-use crate::math::{checkpoint_index, matched_payout};
+use crate::math::{adjust_threshold, checkpoint_index, matched_payout, round_budget};
 use crate::types::*;
 use crate::*;
 use near_sdk::{is_promise_success, Gas};
@@ -31,7 +31,8 @@ pub fn phase_of(r: &Round, now: u64) -> Phase {
 impl Contract {
     // ------------------------------------------------------------ create/cancel
 
-    /// Curator creates a round from 3–5 consented nominations, reserving `budget` from the Hearth.
+    /// Curator creates a round from 3–5 consented nominations. The curator chooses the missions,
+    /// the time windows and the reviewer; the budget, threshold and target are computed here.
     /// All parameters are frozen from this point.
     pub fn create_round(&mut self, args: CreateRoundArgs) -> u32 {
         require!(env::predecessor_account_id() == self.config.curator, err::NOT_CURATOR);
@@ -47,9 +48,11 @@ impl Contract {
                 && args.delivery_deadline_ms < args.review_deadline_ms,
             err::BAD_PARAMS
         );
-        require!(args.threshold.0 > 0 && args.target.0 >= args.threshold.0, err::BAD_PARAMS);
-        require!(args.budget.0 > 0, err::BAD_PARAMS);
-        require!(args.budget.0 <= self.hearth_pool, err::HEARTH_TOO_LOW);
+        let rules = &self.config.rules;
+        let budget = round_budget(self.hearth_pool, rules.budget_bps);
+        require!(budget >= rules.min_budget.0, err::HEARTH_TOO_LOW);
+        let threshold = self.next_threshold;
+        let target = threshold.checked_mul(rules.target_multiple as u128).expect("overflow");
 
         let round_id = self.rounds.len();
         let mut missions = Vec::with_capacity(n);
@@ -70,15 +73,15 @@ impl Contract {
             });
         }
 
-        self.hearth_pool -= args.budget.0;
-        self.reserved_total = self.reserved_total.checked_add(args.budget.0).expect("overflow");
+        self.hearth_pool -= budget;
+        self.reserved_total = self.reserved_total.checked_add(budget).expect("overflow");
 
         let round = Round {
             id: round_id,
             reviewer: args.reviewer,
-            budget: args.budget,
-            threshold: args.threshold,
-            target: args.target,
+            budget: U128(budget),
+            threshold: U128(threshold),
+            target: U128(target),
             open_at_ms: args.open_at_ms,
             candle_start_ms: args.candle_start_ms,
             backing_close_ms: args.backing_close_ms,
@@ -88,6 +91,7 @@ impl Contract {
             missions,
             status: RoundStatus::Funded,
             created_at_ms: now,
+            first_spark: None,
             drawn_checkpoint: None,
             winner: None,
             counted: U128(0),
@@ -158,6 +162,9 @@ impl Contract {
             }
         }
         r.escrow_live = U128(r.escrow_live.0.checked_add(amount.0).expect("overflow"));
+        if r.first_spark.is_none() {
+            r.first_spark = Some(who.clone());
+        }
 
         let key = CommitKey { round_id, account_id: who.clone(), mission };
         let mut rec = self.commitments.get(&key).cloned();
@@ -224,6 +231,8 @@ impl Contract {
 
     /// Anyone, at or after backing close. Draws the candle checkpoint from this block's random
     /// seed (final; never re-drawn), then picks the unique highest counted tally >= threshold.
+    /// This is the only place the next round's threshold moves: up after a winner, down when
+    /// nothing reached the threshold, unchanged after a tie at or above it.
     pub fn select(&mut self, round_id: u32) {
         let now = env::block_timestamp_ms();
         let seed = env::random_seed_array();
@@ -255,14 +264,20 @@ impl Contract {
         let (w, counted) = best.unwrap();
         let threshold = r.threshold.0;
         let budget = r.budget.0;
-        if tie || counted < threshold {
+        // Checked before the tie: a round where nobody reached the threshold, including one
+        // with no commitments at all, is below threshold even though its tallies are equal.
+        let below = counted < threshold;
+        if below || tie {
             r.status = RoundStatus::FailedSelection;
             r.decided_at_ms = Some(now);
-            emit("select", json!({
-                "round_id": round_id, "checkpoint": k, "outcome": if tie { "tie" } else { "below_threshold" },
-                "returned": U128(budget),
-            }));
             self.release_to_hearth(budget);
+            if below {
+                self.adjust_next_threshold(self.config.rules.down_bps);
+            }
+            emit("select", json!({
+                "round_id": round_id, "checkpoint": k, "outcome": if below { "below_threshold" } else { "tie" },
+                "returned": U128(budget), "next_threshold": U128(self.next_threshold),
+            }));
             return;
         }
         let payout = matched_payout(budget, counted, r.target.0);
@@ -271,11 +286,13 @@ impl Contract {
         r.payout = U128(payout);
         r.status = RoundStatus::AwaitingWork;
         let remainder = budget - payout;
+        self.release_to_hearth(remainder);
+        self.adjust_next_threshold(self.config.rules.up_bps);
         emit("select", json!({
             "round_id": round_id, "checkpoint": k, "outcome": "selected", "winner": w,
             "counted": U128(counted), "payout": U128(payout), "returned": U128(remainder),
+            "next_threshold": U128(self.next_threshold),
         }));
-        self.release_to_hearth(remainder);
     }
 
     // ------------------------------------------------------------ work & review
@@ -461,6 +478,12 @@ impl Contract {
 impl Contract {
     pub(crate) fn round_mut(&mut self, round_id: u32) -> &mut Round {
         self.rounds.get_mut(round_id).unwrap_or_else(|| env::panic_str(err::NO_ROUND))
+    }
+
+    /// Moves the next round's threshold, within the configured floor and the initial supply.
+    pub(crate) fn adjust_next_threshold(&mut self, bps: u32) {
+        let floor = self.config.rules.min_threshold.0;
+        self.next_threshold = adjust_threshold(self.next_threshold, bps, floor, self.config.initial_supply.0);
     }
 
     /// Move reserved NEAR back into the Hearth pool.

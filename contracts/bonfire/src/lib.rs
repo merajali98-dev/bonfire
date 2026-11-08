@@ -126,6 +126,9 @@ pub struct Contract {
     /// ft_transfer_call refund is in flight. Kept separate so supply always reconciles.
     pub(crate) resolve_burned: u128,
     pub(crate) total_ash: u128,
+
+    /// Threshold the next round will use. Changes only inside `select`.
+    pub(crate) next_threshold: u128,
 }
 
 #[near]
@@ -141,10 +144,13 @@ impl Contract {
         faucet_amount: U128,
         faucet_interval_ms: u64,
         nominate_min_ash: U128,
+        rules: HearthRules,
     ) -> Self {
         require!(faucet_amount.0 > 0 && faucet_interval_ms > 0, err::BAD_PARAMS);
         let initial = distribution_amount.0.checked_add(faucet_pool.0).expect("overflow");
         require!(initial > 0, err::BAD_PARAMS);
+        require!(rules.is_valid(initial), err::BAD_PARAMS);
+        let next_threshold = rules.initial_threshold.0;
         let me = env::current_account_id();
         require!(distribution_account != me, err::BAD_PARAMS);
 
@@ -167,6 +173,7 @@ impl Contract {
             faucet_interval_ms,
             nominate_min_ash,
             initial_supply: U128(initial),
+            rules,
         };
         emit("genesis", json!({ "config": &config }));
 
@@ -193,6 +200,7 @@ impl Contract {
             total_burned: 0,
             resolve_burned: 0,
             total_ash: 0,
+            next_threshold,
         }
     }
 

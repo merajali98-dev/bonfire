@@ -58,14 +58,36 @@ pub struct Audit {
     pub total_paid: U128,
     pub total_recycled: U128,
     pub total_ash: U128,
+    pub next_threshold: U128,
     pub rounds: u32,
     pub nominations: u32,
+}
+
+/// What a round created right now would get from `HearthRules`.
+#[near(serializers = [json])]
+pub struct NextRoundTerms {
+    pub budget: U128,
+    pub threshold: U128,
+    pub target: U128,
+    /// False when the computed budget is below `min_budget`, so `create_round` would fail.
+    pub funded: bool,
 }
 
 #[near]
 impl Contract {
     pub fn get_config(&self) -> Config {
         self.config.clone()
+    }
+
+    pub fn get_next_round_terms(&self) -> NextRoundTerms {
+        let rules = &self.config.rules;
+        let budget = math::round_budget(self.hearth_pool, rules.budget_bps);
+        NextRoundTerms {
+            budget: U128(budget),
+            threshold: U128(self.next_threshold),
+            target: U128(self.next_threshold.saturating_mul(rules.target_multiple as u128)),
+            funded: budget >= rules.min_budget.0,
+        }
     }
 
     pub fn get_round(&self, round_id: u32) -> Option<RoundView> {
@@ -178,6 +200,7 @@ impl Contract {
             total_paid: U128(self.total_paid),
             total_recycled: U128(self.total_recycled),
             total_ash: U128(self.total_ash),
+            next_threshold: U128(self.next_threshold),
             rounds: self.rounds.len(),
             nominations: self.nominations.len(),
         }

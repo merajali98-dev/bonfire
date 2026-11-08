@@ -37,6 +37,18 @@ pub fn matched_payout(budget: u128, counted: u128, target: u128) -> u128 {
     mul_div(budget, counted.min(target), target)
 }
 
+pub const BPS: u128 = 10_000;
+
+/// A round's budget: the given share of the Hearth pool at creation.
+pub fn round_budget(pool: u128, budget_bps: u32) -> u128 {
+    mul_div(pool, budget_bps as u128, BPS)
+}
+
+/// The next threshold after applying `bps`, kept within [floor, ceiling].
+pub fn adjust_threshold(current: u128, bps: u32, floor: u128, ceiling: u128) -> u128 {
+    mul_div(current, bps as u128, BPS).max(floor).min(ceiling)
+}
+
 /// Candle checkpoint index for a timestamp inside [candle_start, backing_close).
 pub fn checkpoint_index(now: u64, candle_start: u64, backing_close: u64, checkpoints: u8) -> u8 {
     let span = (backing_close - candle_start) as u128;

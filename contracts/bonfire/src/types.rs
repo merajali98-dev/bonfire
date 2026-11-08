@@ -17,6 +17,45 @@ pub struct Config {
     pub nominate_min_ash: U128,
     /// Total EMBER minted at genesis. Nothing is ever minted afterwards.
     pub initial_supply: U128,
+    /// The rules that compute every round's budget, threshold and target.
+    pub rules: HearthRules,
+}
+
+/// Fixed at `new`. A round's budget, threshold and target come only from these and from
+/// past outcomes; no caller supplies them.
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug)]
+pub struct HearthRules {
+    /// Share of the Hearth pool reserved per round, in basis points.
+    pub budget_bps: u32,
+    /// A round cannot be created if its computed budget (yoctoNEAR) is below this.
+    pub min_budget: U128,
+    /// Threshold (EMBER smallest units) of the first round.
+    pub initial_threshold: U128,
+    /// The threshold never falls below this.
+    pub min_threshold: U128,
+    /// Multiplier applied to the next threshold when `select` finds a winner, in basis points.
+    pub up_bps: u32,
+    /// Multiplier applied when nothing reaches the threshold, in basis points.
+    pub down_bps: u32,
+    /// target = threshold * target_multiple.
+    pub target_multiple: u32,
+}
+
+impl HearthRules {
+    pub fn is_valid(&self, initial_supply: u128) -> bool {
+        let bps = crate::math::BPS as u32;
+        (1..=bps).contains(&self.budget_bps)
+            && self.min_budget.0 > 0
+            && self.min_threshold.0 > 0
+            && self.min_threshold.0 <= self.initial_threshold.0
+            && self.initial_threshold.0 <= initial_supply
+            && self.up_bps >= bps
+            && (1..=bps).contains(&self.down_bps)
+            && self.target_multiple >= 1
+            && initial_supply.checked_mul(self.up_bps as u128).is_some()
+            && initial_supply.checked_mul(self.target_multiple as u128).is_some()
+    }
 }
 
 #[near(serializers = [borsh, json])]
@@ -118,11 +157,11 @@ pub struct Submission {
 pub struct Round {
     pub id: u32,
     pub reviewer: AccountId,
-    /// yoctoNEAR reserved from the Hearth at creation.
+    /// yoctoNEAR reserved from the Hearth at creation, computed by `HearthRules`.
     pub budget: U128,
-    /// Minimum counted EMBER for a mission to win.
+    /// Minimum counted EMBER for a mission to win, computed by `HearthRules`.
     pub threshold: U128,
-    /// Counted EMBER at which the payout reaches the full budget.
+    /// Counted EMBER at which the payout reaches the full budget, computed by `HearthRules`.
     pub target: U128,
     pub open_at_ms: u64,
     pub candle_start_ms: u64,
@@ -133,6 +172,8 @@ pub struct Round {
     pub missions: Vec<Mission>,
     pub status: RoundStatus,
     pub created_at_ms: u64,
+    /// The first account to commit in this round. A public record only: no EMBER, weight or Ash.
+    pub first_spark: Option<AccountId>,
 
     // Selection results
     pub drawn_checkpoint: Option<u8>,
@@ -181,14 +222,14 @@ impl Commitment {
     }
 }
 
+/// Everything the curator chooses for a round. Unknown fields are refused, so a call that
+/// tries to pass a budget, threshold or target fails instead of being silently ignored.
 #[near(serializers = [json])]
+#[serde(deny_unknown_fields)]
 #[derive(Clone, Debug)]
 pub struct CreateRoundArgs {
     pub nomination_ids: Vec<u32>,
     pub reviewer: AccountId,
-    pub budget: U128,
-    pub threshold: U128,
-    pub target: U128,
     pub open_at_ms: u64,
     pub candle_start_ms: u64,
     pub backing_close_ms: u64,

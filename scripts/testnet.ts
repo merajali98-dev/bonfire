@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs, promisify } from "node:util";
 import { COMMIT_DEPOSIT } from "../packages/protocol/src/constants.ts";
 import { ERROR_MESSAGES, parseErrorCode } from "../packages/protocol/src/errors.ts";
-import type { Audit, CommitmentView, CreateRoundArgs, Nomination, RoundPhase, RoundView } from "../packages/protocol/src/types.ts";
+import type { Audit, CommitmentView, CreateRoundArgs, NextRoundTerms, Nomination, RoundPhase, RoundView } from "../packages/protocol/src/types.ts";
 
 const exec = promisify(execFile);
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -81,9 +81,6 @@ const { values: opts, positionals } = parseArgs({
     checkpoints: { type: "string", default: "12" },
     delivery: { type: "string", default: "24h" },
     review: { type: "string", default: "12h" },
-    budget: { type: "string", default: "2" },
-    threshold: { type: "string", default: "10000" },
-    target: { type: "string", default: "40000" },
     as: { type: "string" },
     file: { type: "string" },
     uri: { type: "string" },
@@ -329,6 +326,15 @@ function genesisArgs(): object {
     faucet_amount: ember("1000").toString(),
     faucet_interval_ms: 86_400_000,
     nominate_min_ash: ember("1000").toString(),
+    rules: {
+      budget_bps: 2_500,
+      min_budget: near("1").toString(),
+      initial_threshold: ember("10000").toString(),
+      min_threshold: ember("1000").toString(),
+      up_bps: 11_000,
+      down_bps: 7_000,
+      target_multiple: 4,
+    },
   };
 }
 
@@ -340,9 +346,6 @@ interface RoundPlan {
   checkpoints: number;
   deliveryMs: number;
   reviewMs: number;
-  budget: bigint;
-  threshold: bigint;
-  target: bigint;
 }
 
 function createRoundArgs(plan: RoundPlan): CreateRoundArgs {
@@ -353,9 +356,6 @@ function createRoundArgs(plan: RoundPlan): CreateRoundArgs {
   return {
     nomination_ids: plan.nominationIds,
     reviewer: m.accounts.curator,
-    budget: plan.budget.toString(),
-    threshold: plan.threshold.toString(),
-    target: plan.target.toString(),
     open_at_ms: open,
     candle_start_ms: close - plan.candleMs,
     backing_close_ms: close,
@@ -366,6 +366,9 @@ function createRoundArgs(plan: RoundPlan): CreateRoundArgs {
 }
 
 async function createRound(plan: RoundPlan): Promise<number> {
+  if (!dryRun && !(await view<NextRoundTerms>("get_next_round_terms")).funded) {
+    throw new Error("The Hearth is too low: this round's computed budget would be under the minimum. Stoke more first.");
+  }
   await call(m.accounts.curator, "create_round", { args: createRoundArgs(plan) });
   return dryRun ? 0 : (await view<number>("get_round_count")) - 1;
 }
@@ -522,9 +525,6 @@ async function cmdRound(): Promise<void> {
     checkpoints: Number(opts.checkpoints),
     deliveryMs: durationMs(opts.delivery),
     reviewMs: durationMs(opts.review),
-    budget: near(opts.budget),
-    threshold: ember(opts.threshold),
-    target: ember(opts.target),
   });
   console.log(`Round ${round} created.`);
 }
@@ -560,6 +560,9 @@ async function cmdStatus(): Promise<void> {
     for (let id = 0; id < count; id++) await printRound(id);
     if (count === 0) console.log("No rounds yet.");
   }
+  const terms = await view<NextRoundTerms>("get_next_round_terms");
+  console.log(`
+Next round: budget ${showNear(terms.budget)}, threshold ${showEmber(terms.threshold)}, target ${showEmber(terms.target)}${terms.funded ? "" : " (Hearth too low to open it)"}`);
   if (!reportAudit(await view<Audit>("audit"))) process.exitCode = 1;
 }
 
@@ -643,17 +646,21 @@ async function waitForPhase(roundId: number, phases: RoundPhase[]): Promise<void
 /** A short labeled round that exercises commit -> select -> submit -> accept -> burn -> claim. */
 async function cmdDemo(): Promise<void> {
   if (dryRun) throw new Error("The demo waits on real chain time, so it has no dry-run.");
-  const budget = near("1");
   const before = await view<Audit>("audit");
-  if (BigInt(before.hearth_pool) < budget) throw new Error(`The Hearth holds ${showNear(before.hearth_pool)}; the demo needs 1 NEAR. Run seed first.`);
+  const terms = await view<NextRoundTerms>("get_next_round_terms");
+  if (!terms.funded) throw new Error(`The Hearth holds ${showNear(before.hearth_pool)}, too little for a round. Run seed first.`);
+  // Clears the contract's current threshold by half, so payout is below the full budget.
+  const winning = (BigInt(terms.threshold) * 3n) / 2n;
+  await fundBacker(m.accounts.backer1, winning);
+  await fundBacker(m.accounts.backer2, ember("300"));
   const ids = await ensureNominations(missionSet("demo"));
   const roundId = await createRound({
     nominationIds: ids, openInMs: 45_000, backingMs: 150_000, candleMs: 60_000, checkpoints: 3,
-    deliveryMs: 1_800_000, reviewMs: 1_800_000, budget, threshold: ember("1000"), target: ember("4000"),
+    deliveryMs: 1_800_000, reviewMs: 1_800_000,
   });
   console.log(`Demo round ${roundId} created. Waiting for backing.`);
   await waitForPhase(roundId, ["Backing"]);
-  await commitAs(m.accounts.backer1, roundId, 0, ember("1500"));
+  await commitAs(m.accounts.backer1, roundId, 0, winning);
   await commitAs(m.accounts.backer2, roundId, 1, ember("200"));
   console.log("Waiting for the candle.");
   await waitForPhase(roundId, ["Candle"]);
@@ -673,7 +680,7 @@ async function cmdDemo(): Promise<void> {
   const audit = await view<Audit>("audit");
   const ok = reportAudit(audit);
   const burned = BigInt(audit.total_burned) - BigInt(before.total_burned);
-  if (!ok || final.round.status !== "Accepted" || final.round.payout_state !== "Paid" || burned !== ember("1500")) {
+  if (!ok || final.round.status !== "Accepted" || final.round.payout_state !== "Paid" || burned !== winning) {
     throw new Error(`Demo round did not finish as expected: ${final.round.status}, ${final.round.payout_state}, burned ${showEmber(burned)}.`);
   }
   console.log(`\nGate passed: commit -> select -> submit -> accept -> burn ${showEmber(burned)} -> claim ${showNear(final.round.payout)}.`);

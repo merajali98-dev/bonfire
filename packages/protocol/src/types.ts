@@ -13,6 +13,26 @@ export interface Config {
   faucet_interval_ms: number;
   nominate_min_ash: U128;
   initial_supply: U128;
+  rules: HearthRules;
+}
+
+/** Fixed at init. Every round's budget, threshold and target are computed from these. */
+export interface HearthRules {
+  budget_bps: number;
+  min_budget: U128;
+  initial_threshold: U128;
+  min_threshold: U128;
+  up_bps: number;
+  down_bps: number;
+  target_multiple: number;
+}
+
+/** What a round created right now would get. `funded` is false if create_round would fail. */
+export interface NextRoundTerms {
+  budget: U128;
+  threshold: U128;
+  target: U128;
+  funded: boolean;
 }
 
 export interface Nomination {
@@ -75,6 +95,8 @@ export interface Round {
   missions: Mission[];
   status: RoundStatus;
   created_at_ms: number;
+  /** The first account to commit. A public record only: no EMBER, weight or Ash. */
+  first_spark: AccountId | null;
   drawn_checkpoint: number | null;
   winner: number | null;
   counted: U128;
@@ -137,16 +159,15 @@ export interface Audit {
   total_paid: U128;
   total_recycled: U128;
   total_ash: U128;
+  next_threshold: U128;
   rounds: number;
   nominations: number;
 }
 
+/** Everything the curator chooses. The contract refuses any other field. */
 export interface CreateRoundArgs {
   nomination_ids: number[];
   reviewer: AccountId;
-  budget: U128;
-  threshold: U128;
-  target: U128;
   open_at_ms: number;
   candle_start_ms: number;
   backing_close_ms: number;
