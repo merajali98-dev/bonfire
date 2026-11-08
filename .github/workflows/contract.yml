@@ -1,0 +1,52 @@
+name: contract
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+        working-directory: contracts/bonfire
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system packages
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev libudev-dev
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install 1.99.0 --profile minimal --target wasm32-unknown-unknown
+          rustup default 1.99.0
+
+      - name: Install cargo-near
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.23.0/cargo-near-installer.sh | sh
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            contracts/bonfire/target
+          key: contract-${{ runner.os }}-${{ hashFiles('contracts/bonfire/Cargo.lock') }}
+          restore-keys: contract-${{ runner.os }}-
+
+      - name: Unit tests
+        run: cargo test --lib
+
+      - name: Build wasm
+        run: cargo near build non-reproducible-wasm --no-abi
+
+      - name: Sandbox tests
+        run: |
+          cargo test --test sandbox -- --nocapture --test-threads=1 2>&1 | tee sandbox-output.txt
+
+      - name: Publish measurements
+        if: always()
+        run: |
+          echo '### Sandbox measurements' >> "$GITHUB_STEP_SUMMARY"
+          grep -o 'METRIC .*' sandbox-output.txt | sed 's/^METRIC /- /' >> "$GITHUB_STEP_SUMMARY" || true

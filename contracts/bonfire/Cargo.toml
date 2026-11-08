@@ -16,6 +16,14 @@ near-contract-standards = "=5.30.1"
 [dev-dependencies]
 near-sdk = { version = "=5.30.1", features = ["unit-testing"] }
 
+# The sandbox suite (tests/sandbox.rs) needs a native neard binary, which is only published
+# for Linux and macOS. On Windows it is skipped; CI runs it on Linux.
+[target.'cfg(not(windows))'.dev-dependencies]
+near-workspaces = "=0.24.0"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+anyhow = "1"
+serde_json = "1"
+
 [profile.release]
 codegen-units = 1
 opt-level = "z"
