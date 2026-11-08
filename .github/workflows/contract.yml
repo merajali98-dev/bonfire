@@ -5,6 +5,20 @@ on:
   workflow_dispatch:
 
 jobs:
+  simulator:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: The committed report matches the simulator
+        run: npm run simulate && git diff --exit-code docs/simulation.md packages/simulator/reports
+
   test:
     runs-on: ubuntu-24.04
     timeout-minutes: 40

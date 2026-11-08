@@ -331,8 +331,8 @@ function genesisArgs(): object {
       min_budget: near("1").toString(),
       initial_threshold: ember("10000").toString(),
       min_threshold: ember("1000").toString(),
-      up_bps: 11_000,
-      down_bps: 7_000,
+      up_bps: 10_500,
+      down_bps: 8_500,
       target_multiple: 4,
     },
   };
@@ -686,6 +686,16 @@ async function cmdDemo(): Promise<void> {
   console.log(`\nGate passed: commit -> select -> submit -> accept -> burn ${showEmber(burned)} -> claim ${showNear(final.round.payout)}.`);
 }
 
+/** The whole first deployment in one go. Every step skips work that is already done. */
+async function cmdFirstRun(): Promise<void> {
+  await cmdAccounts();
+  console.log("Building the contract.");
+  if (!dryRun) await exec("cargo", ["near", "build", "non-reproducible-wasm", "--no-abi"], { cwd: join(ROOT, "contracts", "bonfire"), maxBuffer: 50 * 1024 * 1024, windowsHide: true });
+  await cmdDeploy();
+  await cmdSeed();
+  if (!dryRun) await cmdDemo();
+}
+
 const COMMANDS: Record<string, () => Promise<void>> = {
   accounts: cmdAccounts,
   deploy: cmdDeploy,
@@ -702,6 +712,7 @@ const COMMANDS: Record<string, () => Promise<void>> = {
   settle: cmdSettle,
   "settle-all": cmdSettleAll,
   demo: cmdDemo,
+  "first-run": cmdFirstRun,
 };
 
 async function main(): Promise<void> {
@@ -709,7 +720,7 @@ async function main(): Promise<void> {
   if (name === "doctor") return cmdDoctor();
   const command = name ? COMMANDS[name] : undefined;
   if (!command) throw new Error(`Commands: doctor, ${Object.keys(COMMANDS).join(", ")}. See scripts/README.md.`);
-  if (name !== "accounts") m = loadManifest();
+  if (name !== "accounts" && name !== "first-run") m = loadManifest();
   await command();
 }
 

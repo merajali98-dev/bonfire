@@ -8,6 +8,8 @@
   ],
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present && tsc -p scripts",
+    "test": "npm test --workspaces --if-present",
+    "simulate": "npm run report -w @bonfire/simulator",
     "testnet": "node --disable-warning=ExperimentalWarning scripts/testnet.ts"
   },
   "devDependencies": {

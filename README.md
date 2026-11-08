@@ -13,7 +13,8 @@ Built at NEAR HACKATHON (Memecoins With Mechanics; Social Money). Work in progre
 | `contracts/bonfire` — EMBER token, Hearth, nominations, rounds, candle close, matching payout, Ash, settlement | Implemented; unit and sandbox tests passing in CI; not yet deployed |
 | `packages/protocol` — TypeScript types for the contract views and error codes | Implemented |
 | `scripts/testnet.ts` — deploy, seed, run and settle rounds from the CLI ([runbook](scripts/README.md)) | Written and dry-run checked; not yet run against testnet |
-| Web app, simulator, deployment | Not started |
+| `packages/simulator` — seeded 60-day scenarios, backer strategies and rule sweeps ([report](docs/simulation.md)) | Implemented; rule math shared with the contract through fixtures |
+| Web app, deployment | Not started |
 
 Claims in this README are limited to what the repository currently contains.
 
@@ -45,7 +46,7 @@ The contract computes every round's money terms from rules fixed at initializati
 - **Threshold:** the next round's threshold rises after a round finds a winner and falls when nothing reaches it. A tie at or above it leaves it alone, and rejected or expired work doesn't move it.
 - **Target:** a fixed multiple of the threshold.
 
-The curator still chooses which consented missions enter a round, its time windows and its reviewer, and the reviewer judges the work. The current rule values in `scripts/testnet.ts` are development settings and are not final.
+The curator still chooses which consented missions enter a round, its time windows and its reviewer, and the reviewer judges the work. The rule values come from the [simulation report](docs/simulation.md). Run `npm run simulate` to regenerate it and `npm test` for its checks; both need only Node 24. The values are not final until the frozen deployment.
 
 ## Assistance tools and dependencies
 

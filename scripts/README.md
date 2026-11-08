@@ -6,6 +6,8 @@
 
 ## First deployment
 
+To do all of it at once, run `npm run testnet -- first-run --prefix <name>`. It creates the accounts, builds the wasm, deploys, seeds and runs the demo. The steps are below if you want them one at a time.
+
 Build the contract, then check what is ready. `doctor` only reads.
 
 ```sh

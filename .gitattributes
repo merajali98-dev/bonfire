@@ -1,2 +1,6 @@
 # On-chain brief hashes are computed over these exact bytes.
 docs/briefs/** text eol=lf
+# CI regenerates these and fails if they differ.
+docs/simulation.md text eol=lf
+packages/simulator/reports/** text eol=lf
+packages/protocol/fixtures/** text eol=lf

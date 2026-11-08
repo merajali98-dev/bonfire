@@ -969,6 +969,35 @@ fn first_spark_records_the_first_backer_only() {
     assert_eq!(c.ash_of(&user(0)), 0, "it carries no Ash");
 }
 
+// ======================================================================= shared fixtures
+
+/// The same file is checked against the TypeScript rules in packages/simulator.
+#[test]
+fn math_matches_the_shared_fixtures() {
+    use crate::math::{adjust_threshold, checkpoint_index, matched_payout, round_budget};
+    use near_sdk::serde_json::{from_str, Value};
+    let fixtures: Value = from_str(include_str!("../../../packages/protocol/fixtures/math.json")).unwrap();
+    let big = |v: &Value| v.as_str().unwrap().parse::<u128>().unwrap();
+    let small = |v: &Value| v.as_u64().unwrap();
+    let cases = |name: &str| fixtures[name].as_array().unwrap().clone();
+    for c in cases("matched_payout") {
+        assert_eq!(matched_payout(big(&c["budget"]), big(&c["counted"]), big(&c["target"])), big(&c["expected"]), "{c}");
+    }
+    for c in cases("round_budget") {
+        assert_eq!(round_budget(big(&c["pool"]), small(&c["bps"]) as u32), big(&c["expected"]), "{c}");
+    }
+    for c in cases("adjust_threshold") {
+        assert_eq!(adjust_threshold(big(&c["current"]), small(&c["bps"]) as u32, big(&c["floor"]), big(&c["ceiling"])), big(&c["expected"]), "{c}");
+    }
+    for c in cases("checkpoint_index") {
+        assert_eq!(
+            checkpoint_index(small(&c["now"]), small(&c["candle_start"]), small(&c["close"]), small(&c["checkpoints"]) as u8) as u64,
+            small(&c["expected"]),
+            "{c}"
+        );
+    }
+}
+
 // ======================================================================= randomized
 
 /// xorshift64 — deterministic pseudo-random operation sequences.
