@@ -283,13 +283,23 @@ async function runNear(action: string, signer: string, args: string[]): Promise<
     console.log(`[dry-run] near ${args.join(" ")}`);
     return;
   }
-  let output: string;
-  try {
-    const result = await exec(NEAR_BIN, args, { maxBuffer: 20 * 1024 * 1024, timeout: 240_000, windowsHide: true });
-    output = result.stdout + result.stderr;
-  } catch (error) {
-    const failed = error as { stdout?: string; stderr?: string; message: string };
-    throw new Error(`${action} failed. ${explainFailure(`${failed.stdout ?? ""}${failed.stderr ?? ""}` || failed.message)}`);
+  let output = "";
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const result = await exec(NEAR_BIN, args, { maxBuffer: 20 * 1024 * 1024, timeout: 240_000, windowsHide: true });
+      output = result.stdout + result.stderr;
+      break;
+    } catch (error) {
+      const failed = error as { stdout?: string; stderr?: string; message: string };
+      const text = `${failed.stdout ?? ""}${failed.stderr ?? ""}` || failed.message;
+      // The CLI reads the signer's keys before it signs, so this failure means nothing was sent.
+      if (attempt < 4 && text.includes("Failed to fetch access KeyList")) {
+        console.log(`  ${action}: network error before sending. Retrying.`);
+        await sleep(3_000 * attempt);
+        continue;
+      }
+      throw new Error(`${action} failed. ${explainFailure(text)}`);
+    }
   }
   if (/Smart contract panicked|ERR_[A-Z_]{3,}/.test(output)) throw new Error(`${action} failed. ${explainFailure(output)}`);
   const hash = output.match(/Transaction ID:\s*([1-9A-HJ-NP-Za-km-z]{43,44})/)?.[1] ?? output.match(/transactions\/([1-9A-HJ-NP-Za-km-z]{43,44})/)?.[1] ?? null;
