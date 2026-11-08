@@ -27,7 +27,7 @@ const STORAGE_BYTE_COST = 10n ** 19n;
 const ONE_NEAR = 10n ** 24n;
 const ONE_EMBER = 10n ** 18n;
 
-const ROLES = ["contract", "curator", "dist", "stoker", "maker1", "maker2", "maker3", "backer1", "backer2"] as const;
+const ROLES = ["contract", "curator", "dist", "stoker", "maker1", "maker2", "maker3", "backer1", "backer2", "guests"] as const;
 type Role = (typeof ROLES)[number];
 
 interface TxRecord {
@@ -155,7 +155,10 @@ function newManifest(prefix: string): Manifest {
 }
 
 function loadManifest(): Manifest {
-  if (existsSync(MANIFEST_PATH)) return JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) as Manifest;
+  if (existsSync(MANIFEST_PATH)) {
+    const saved = JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) as Manifest;
+    return { ...saved, accounts: { ...accountsFor(saved.prefix), ...saved.accounts } };
+  }
   if (dryRun) return newManifest(opts.prefix ?? "example");
   throw new Error("No deployment manifest yet. Run: npm run testnet -- accounts --prefix <name>");
 }
@@ -722,6 +725,19 @@ async function cmdDemo(): Promise<void> {
   console.log(`\nGate passed: commit -> select -> submit -> accept -> burn ${showEmber(burned)} -> claim ${showNear(final.round.payout)}.`);
 }
 
+/** Creates the parent of the guest accounts and writes its testnet key for the local web app. */
+async function cmdGuests(): Promise<void> {
+  const id = m.accounts.guests;
+  if (dryRun || !(await accountInfo(id))) await createAccount("guests", id);
+  if (dryRun) return;
+  const key = JSON.parse(readFileSync(join(homedir(), ".near-credentials", "testnet", `${id}.json`), "utf8")) as { private_key: string };
+  const path = join(ROOT, "apps", "web", ".env.local");
+  writeFileSync(path, `GUEST_PARENT=${id}\nGUEST_SECRET_KEY=${key.private_key}\n`);
+  saveManifest(m);
+  console.log(`Guest parent is ${id}. Its testnet key is in apps/web/.env.local, which git ignores.`);
+  console.log("For the hosted site, add the same two values as Vercel environment variables.");
+}
+
 /** The whole first deployment in one go. Every step skips work that is already done. */
 async function cmdFirstRun(): Promise<void> {
   await cmdAccounts();
@@ -749,6 +765,7 @@ const COMMANDS: Record<string, () => Promise<void>> = {
   "settle-all": cmdSettleAll,
   demo: cmdDemo,
   "first-run": cmdFirstRun,
+  guests: cmdGuests,
 };
 
 async function main(): Promise<void> {
