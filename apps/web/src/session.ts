@@ -20,6 +20,9 @@ export function explain(error: unknown): string {
   const text = error instanceof Error ? error.message : typeof error === "string" ? error : JSON.stringify(error);
   const code = parseErrorCode(text ?? "");
   if (code) return ERROR_MESSAGES[code];
+  if (/not have enough balance|NotEnoughBalance|LackBalance/i.test(text ?? "")) {
+    return "This account doesn't have enough test NEAR to pay for the transaction. Add some to it, or start as a guest instead.";
+  }
   if (/reject|cancel|denied|closed/i.test(text ?? "")) return "The transaction was not approved.";
   return text || "Something went wrong.";
 }
