@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { COMMIT_DEPOSIT, type RoundView } from "@bonfire/protocol";
 import { CONTRACT, EXPLORER_TX, loadHoldings, loadSnapshot, view, type Holdings, type Snapshot } from "./chain";
+import { EmbersPage } from "./Embers";
 import { countdown, parseEmber, shortAccount, showEmber, showNear } from "./format";
 import { connectWallet, createGuest, explain, restoreGuest, restoreWallet, type Session } from "./session";
 
@@ -14,6 +15,16 @@ export function App() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [route, setRoute] = useState(routeOf());
+
+  useEffect(() => {
+    const onChange = () => {
+      setRoute(routeOf());
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener("hashchange", onChange);
+    return () => window.removeEventListener("hashchange", onChange);
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -72,27 +83,45 @@ export function App() {
   const signIn = (how: () => Promise<Session>, label: string) =>
     run(label, async () => setSession(await how()), "You're signed in.");
 
+  const claim = () => session?.call("faucet", {}, holdings?.registered === false ? BigInt(snapshot?.minStorage ?? "0") : 0n) ?? Promise.resolve(null);
+  const claimLabel = `Claim ${snapshot ? showEmber(snapshot.config.faucet_amount) : ""} EMBER`;
+  const account = <AccountCard session={session} holdings={holdings} claimLabel={claimLabel} claim={claim} busy={busy} now={now} run={run} signIn={signIn} clear={() => setSession(null)} />;
+
   return (
     <div className="page">
       <header className="top">
         <div className="brand">BONFIRE</div>
         <span className="mode" title="Real transactions on NEAR testnet">Live · testnet</span>
       </header>
+      <nav className="tabs">
+        <a href="#/" className={route === "home" ? "on" : ""} aria-current={route === "home" ? "page" : undefined}>The fire</a>
+        <a href="#/embers" className={route === "embers" ? "on" : ""} aria-current={route === "embers" ? "page" : undefined}>My embers</a>
+      </nav>
 
-      <section className="hero">
-        <h1>Back the mission. See it built. Then burn together.</h1>
-        <p>Put your EMBER behind the mission you want made. If it wins and the work is accepted, your EMBER burns and the creator gets paid. Otherwise you get it back.</p>
-      </section>
+      {route === "embers" ? (
+        session ? (
+          <EmbersPage session={session} holdings={holdings} faucetLabel={claimLabel} onClaim={claim} now={now} busy={busy} run={run} />
+        ) : (
+          account
+        )
+      ) : (
+        <>
+          <section className="hero">
+            <h1>Back the mission. See it built. Then burn together.</h1>
+            <p>Put your EMBER behind the mission you want made. If it wins and the work is accepted, your EMBER burns and the creator gets paid. Otherwise you get it back.</p>
+          </section>
 
-      {loadError && !snapshot && <div className="notice bad">Couldn't reach the network: {loadError} Retrying.</div>}
-      {!snapshot && !loadError && <div className="card muted">Reading the fire from the chain…</div>}
-      {snapshot && <RoundCard snapshot={snapshot} now={now} session={session} busy={busy} run={run} />}
+          {loadError && !snapshot && <div className="notice bad">Couldn't reach the network: {loadError} Retrying.</div>}
+          {!snapshot && !loadError && <div className="card muted">Reading the fire from the chain…</div>}
+          {snapshot && <RoundCard snapshot={snapshot} now={now} session={session} busy={busy} run={run} />}
 
-      {snapshot?.round && session && ["Backing", "Candle"].includes(snapshot.round.phase) && (
-        <CommitCard round={snapshot.round} session={session} holdings={holdings} busy={busy} now={now} run={run} />
+          {snapshot?.round && session && ["Backing", "Candle"].includes(snapshot.round.phase) && (
+            <CommitCard round={snapshot.round} session={session} holdings={holdings} busy={busy} now={now} run={run} />
+          )}
+
+          {account}
+        </>
       )}
-
-      <AccountCard snapshot={snapshot} session={session} holdings={holdings} busy={busy} now={now} run={run} signIn={signIn} clear={() => setSession(null)} />
 
       {notice && (
         <div className={`notice ${notice.tone}`} role="status" onClick={() => notice.tone !== "busy" && setNotice(null)}>
@@ -108,6 +137,8 @@ export function App() {
     </div>
   );
 }
+
+const routeOf = () => (window.location.hash === "#/embers" ? "embers" : "home");
 
 function phaseLine(round: RoundView, now: number, offset: number): string {
   const r = round.round;
@@ -138,7 +169,7 @@ function phaseLine(round: RoundView, now: number, offset: number): string {
   }
 }
 
-interface ActionProps {
+export interface ActionProps {
   busy: boolean;
   run: (label: string, action: () => Promise<string | null | void>, done: string) => Promise<void>;
 }
@@ -269,10 +300,11 @@ function CommitCard({ round, session, holdings, now, busy, run }: { round: Round
   );
 }
 
-function AccountCard({ snapshot, session, holdings, now, busy, run, signIn, clear }: {
-  snapshot: Snapshot | null;
+function AccountCard({ session, holdings, claimLabel, claim, now, busy, run, signIn, clear }: {
   session: Session | null;
   holdings: Holdings | null;
+  claimLabel: string;
+  claim: () => Promise<string | null | void>;
   now: number;
   signIn: (how: () => Promise<Session>, label: string) => Promise<void>;
   clear: () => void;
@@ -290,8 +322,7 @@ function AccountCard({ snapshot, session, holdings, now, busy, run, signIn, clea
     );
   }
   const faucetWait = holdings && holdings.faucetNextMs > 0 ? holdings.faucetNextMs - now : 0;
-  const amount = snapshot?.config.faucet_amount;
-  const claim = () => session.call("faucet", {}, holdings?.registered === false ? BigInt(snapshot?.minStorage ?? "0") : 0n);
+  const committed = holdings ? holdings.commitments.reduce((sum, c) => sum + BigInt(c.total), 0n) : 0n;
   return (
     <section className="card">
       <div className="row spread">
@@ -301,12 +332,13 @@ function AccountCard({ snapshot, session, holdings, now, busy, run, signIn, clea
       <p className="hint">{shortAccount(session.accountId)}</p>
       <dl className="facts">
         <div><dt>Free</dt><dd>{holdings ? showEmber(holdings.balance) : "…"}</dd></div>
-        <div><dt>Committed</dt><dd>{holdings ? showEmber(holdings.commitments.reduce((sum, c) => sum + BigInt(c.total), 0n)) : "…"}</dd></div>
+        <div><dt>Committed</dt><dd>{holdings ? showEmber(committed) : "…"}</dd></div>
         <div><dt>Ash</dt><dd>{holdings ? showEmber(holdings.ash) : "…"}</dd></div>
       </dl>
+      {committed > 0n && <p className="hint"><a href="#/embers">See what you can reclaim</a></p>}
       <div className="stack">
         <button disabled={busy || faucetWait > 0 || !holdings} onClick={() => run("Claiming EMBER…", claim, "EMBER claimed.")}>
-          {faucetWait > 0 ? `Next claim in ${countdown(faucetWait)}` : `Claim ${amount ? showEmber(amount) : ""} EMBER`}
+          {faucetWait > 0 ? `Next claim in ${countdown(faucetWait)}` : claimLabel}
         </button>
         <button className="ghost" disabled={busy} onClick={() => session.signOut().then(clear)}>{session.kind === "guest" ? "Forget this guest" : "Disconnect"}</button>
       </div>

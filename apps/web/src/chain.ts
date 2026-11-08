@@ -76,6 +76,8 @@ export interface Holdings {
   ash: U128;
   faucetNextMs: number;
   commitments: CommitmentView[];
+  rounds: Record<number, RoundView>;
+  readAt: number;
 }
 
 export async function loadHoldings(accountId: string): Promise<Holdings> {
@@ -86,5 +88,11 @@ export async function loadHoldings(accountId: string): Promise<Holdings> {
     view<number>("get_faucet_next_ms", { account_id: accountId }),
     view<CommitmentView[]>("get_commitments_of", { account_id: accountId }),
   ]);
-  return { registered: storage !== null, balance, ash, faucetNextMs, commitments };
+  const ids = [...new Set(commitments.map((c) => c.round_id))];
+  const found = await Promise.all(ids.map((round_id) => view<RoundView | null>("get_round", { round_id })));
+  const rounds: Record<number, RoundView> = {};
+  found.forEach((round) => {
+    if (round) rounds[round.round.id] = round;
+  });
+  return { registered: storage !== null, balance, ash, faucetNextMs, commitments, rounds, readAt: Date.now() };
 }
