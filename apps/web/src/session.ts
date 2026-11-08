@@ -3,7 +3,9 @@ import type { NearConnector } from "@hot-labs/near-connect";
 import { parseErrorCode, ERROR_MESSAGES } from "@bonfire/protocol";
 import { CONTRACT, RPC_URL } from "./chain";
 
-const GAS = 100_000_000_000_000n;
+// NEAR charges prepaid gas up front, about 0.1 NEAR for 100 TGas, which a new account can't
+// cover. The heaviest action this app sends burns about 4 TGas at the worst case.
+const GAS = 30_000_000_000_000n;
 const GUEST_KEY = "bonfire.guest.v1";
 
 export interface Session {
