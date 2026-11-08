@@ -412,12 +412,38 @@ async function cmdAccounts(): Promise<void> {
       console.log(`  skip ${id} (already exists)`);
       continue;
     }
-    await runNear(`create account ${role}`, id, [
-      "account", "create-account", "sponsor-by-faucet-service", id,
-      "autogenerate-new-keypair", "save-to-legacy-keychain",
-      "network-config", "testnet", "create",
-    ]);
-    if (!dryRun) await sleep(3_000);
+    await createAccount(role, id);
+    if (!dryRun) await sleep(5_000);
+  }
+}
+
+/**
+ * The faucet service can create the account and still fail to answer the CLI, so a failed
+ * attempt only counts once the chain confirms there is no account. Retrying sooner would
+ * replace the saved key with a new one that the account does not have.
+ */
+async function createAccount(role: Role, id: string): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await runNear(`create account ${role}`, id, [
+        "account", "create-account", "sponsor-by-faucet-service", id,
+        "autogenerate-new-keypair", "save-to-legacy-keychain",
+        "network-config", "testnet", "create",
+      ]);
+      return;
+    } catch (error) {
+      if (dryRun) throw error;
+      console.log(`  ${role}: no answer from the faucet service. Checking the chain.`);
+      for (let check = 0; check < 12; check++) {
+        await sleep(5_000);
+        if (await accountInfo(id)) {
+          console.log(`  ok  create account ${role} (confirmed on chain)`);
+          return;
+        }
+      }
+      if (attempt === 3) throw error;
+      console.log(`  ${role}: not created. Retrying (attempt ${attempt + 1} of 3).`);
+    }
   }
 }
 
