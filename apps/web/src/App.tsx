@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { COMMIT_DEPOSIT, type RoundView } from "@bonfire/protocol";
 import { CONTRACT, EXPLORER_TX, loadHoldings, loadSnapshot, view, type Holdings, type Snapshot } from "./chain";
 import { EmbersPage } from "./Embers";
+import { Hero } from "./Fire";
 import { countdown, parseEmber, shortAccount, showEmber, showNear } from "./format";
+import { sceneOf } from "./scene";
 import { connectWallet, createGuest, explain, restoreGuest, restoreWallet, type Session } from "./session";
 
 type Notice = { tone: "busy" | "good" | "bad"; text: string; hash?: string | null };
@@ -83,6 +85,11 @@ export function App() {
   const signIn = (how: () => Promise<Session>, label: string) =>
     run(label, async () => setSession(await how()), "You're signed in.");
 
+  const mood = route === "home" && snapshot ? sceneOf(snapshot.round).mood : "calm";
+  useEffect(() => {
+    document.body.dataset.mood = mood;
+  }, [mood]);
+
   const claim = () => session?.call("faucet", {}, holdings?.registered === false ? BigInt(snapshot?.minStorage ?? "0") : 0n) ?? Promise.resolve(null);
   const claimLabel = `Claim ${snapshot ? showEmber(snapshot.config.faucet_amount) : ""} EMBER`;
   const account = <AccountCard session={session} holdings={holdings} claimLabel={claimLabel} claim={claim} busy={busy} now={now} run={run} signIn={signIn} clear={() => setSession(null)} />;
@@ -90,7 +97,7 @@ export function App() {
   return (
     <div className="page">
       <header className="top">
-        <div className="brand">BONFIRE</div>
+        <div className="brand"><img src="/art/flame-mark.webp" alt="" />BONFIRE</div>
         <span className="mode" title="Real transactions on NEAR testnet">Live · testnet</span>
       </header>
       <nav className="tabs">
@@ -99,28 +106,24 @@ export function App() {
       </nav>
 
       {route === "embers" ? (
-        session ? (
-          <EmbersPage session={session} holdings={holdings} faucetLabel={claimLabel} onClaim={claim} now={now} busy={busy} run={run} />
-        ) : (
-          account
-        )
+        <div className="narrow">
+          {session ? <EmbersPage session={session} holdings={holdings} faucetLabel={claimLabel} onClaim={claim} now={now} busy={busy} run={run} /> : account}
+        </div>
       ) : (
-        <>
-          <section className="hero">
-            <h1>Back the mission. See it built. Then burn together.</h1>
-            <p>Put your EMBER behind the mission you want made. If it wins and the work is accepted, your EMBER burns and the creator gets paid. Otherwise you get it back.</p>
-          </section>
+        <div className="home">
+          <Hero snapshot={snapshot} now={now} />
+          <div className="column">
+            {loadError && !snapshot && <div className="card muted">Couldn't reach the network: {loadError} Retrying.</div>}
+            {!snapshot && !loadError && <div className="card muted">Reading the fire from the chain…</div>}
+            {snapshot && <RoundCard snapshot={snapshot} session={session} busy={busy} run={run} />}
 
-          {loadError && !snapshot && <div className="notice bad">Couldn't reach the network: {loadError} Retrying.</div>}
-          {!snapshot && !loadError && <div className="card muted">Reading the fire from the chain…</div>}
-          {snapshot && <RoundCard snapshot={snapshot} now={now} session={session} busy={busy} run={run} />}
+            {snapshot?.round && session && ["Backing", "Candle"].includes(snapshot.round.phase) && (
+              <CommitCard round={snapshot.round} session={session} holdings={holdings} busy={busy} now={now} run={run} />
+            )}
 
-          {snapshot?.round && session && ["Backing", "Candle"].includes(snapshot.round.phase) && (
-            <CommitCard round={snapshot.round} session={session} holdings={holdings} busy={busy} now={now} run={run} />
-          )}
-
-          {account}
-        </>
+            {account}
+          </div>
+        </div>
       )}
 
       {notice && (
@@ -140,47 +143,16 @@ export function App() {
 
 const routeOf = () => (window.location.hash === "#/embers" ? "embers" : "home");
 
-function phaseLine(round: RoundView, now: number, offset: number): string {
-  const r = round.round;
-  const until = (ms: number) => countdown(ms - (now + offset));
-  switch (round.phase) {
-    case "Scheduled":
-      return `Opens in ${until(r.open_at_ms)}.`;
-    case "Backing":
-      return `Backing is open. The candle lights in ${until(r.candle_start_ms)}.`;
-    case "Candle":
-      return `The candle is lit, so the fire may go out at any moment. Backing closes within ${until(r.backing_close_ms)}.`;
-    case "AwaitingSelection":
-      return "Backing has closed. Anyone can draw the candle to decide the winner.";
-    case "AwaitingWork":
-      return `The creator has ${until(r.delivery_deadline_ms)} to deliver. No EMBER burns until the work is accepted.`;
-    case "AwaitingReview":
-      return `Delivered. The reviewer has ${until(r.review_deadline_ms)} to decide.`;
-    case "Accepted":
-      return "Accepted. The counted EMBER burned and the creator was paid.";
-    case "Rejected":
-      return "The work was rejected. All EMBER is refundable and the budget went back to the Hearth.";
-    case "FailedSelection":
-      return "No mission qualified. All EMBER is refundable and the budget went back to the Hearth.";
-    case "Cancelled":
-      return "This round was cancelled before it opened.";
-    default:
-      return "A deadline passed. All EMBER is refundable and the budget went back to the Hearth.";
-  }
-}
-
 export interface ActionProps {
   busy: boolean;
   run: (label: string, action: () => Promise<string | null | void>, done: string) => Promise<void>;
 }
 
-function RoundCard({ snapshot, now, session, busy, run }: { snapshot: Snapshot; now: number; session: Session | null } & ActionProps) {
-  const { round, terms } = snapshot;
-  // Chain time, so a wrong device clock can't mislabel a phase.
-  const offset = useMemo(() => (round ? round.now_ms - Date.now() : 0), [round]);
+function RoundCard({ snapshot, session, busy, run }: { snapshot: Snapshot; session: Session | null } & ActionProps) {
+  const { round } = snapshot;
   const active = round && ["Scheduled", "Backing", "Candle", "AwaitingSelection"].includes(round.phase);
 
-  if (!round) return <NextRound snapshot={snapshot} heading="The fire hasn't been lit yet." />;
+  if (!round) return <NextRound snapshot={snapshot} session={session} heading="The fire hasn't been lit yet." />;
   const r = round.round;
   const target = BigInt(r.target);
   const scale = (value: bigint) => `${Math.min(100, Number((value * 1000n) / target) / 10)}%`;
@@ -188,13 +160,9 @@ function RoundCard({ snapshot, now, session, busy, run }: { snapshot: Snapshot; 
   return (
     <>
       <section className="card">
-        <div className="row spread">
-          <h2>Round {r.id}</h2>
-          <span className={`phase ${round.phase.toLowerCase()}`}>{round.phase === "AwaitingSelection" ? "Closed" : round.phase}</span>
-        </div>
-        <p className="phaseline">{phaseLine(round, now, offset)}</p>
+        <h2>The missions</h2>
         <dl className="facts">
-          <div><dt>Budget</dt><dd>{showNear(r.budget)} NEAR</dd></div>
+          <div><dt>Budget</dt><dd>{showNear(r.budget)} <small>NEAR</small></dd></div>
           <div><dt>Threshold</dt><dd>{showEmber(r.threshold)}</dd></div>
           <div><dt>Target</dt><dd>{showEmber(r.target)}</dd></div>
         </dl>
@@ -229,12 +197,12 @@ function RoundCard({ snapshot, now, session, busy, run }: { snapshot: Snapshot; 
         )}
         {active && !session && round.phase !== "AwaitingSelection" && <p className="hint">Sign in below to back a mission.</p>}
       </section>
-      {!active && <NextRound snapshot={snapshot} heading="Between rounds" terms={terms} />}
+      {!active && <NextRound snapshot={snapshot} session={session} heading="The next round" />}
     </>
   );
 }
 
-function NextRound({ snapshot, heading }: { snapshot: Snapshot; heading: string; terms?: Snapshot["terms"] }) {
+function NextRound({ snapshot, session, heading }: { snapshot: Snapshot; session: Session | null; heading: string }) {
   const { terms, audit } = snapshot;
   return (
     <section className="card">
@@ -244,7 +212,7 @@ function NextRound({ snapshot, heading }: { snapshot: Snapshot; heading: string;
       ) : (
         <p>The Hearth holds {showNear(audit.hearth_pool)} NEAR, too little for a round. It needs more stoking before the next one can open.</p>
       )}
-      <p className="hint">While you wait, sign in and claim EMBER so you're ready.</p>
+      <p className="hint">{session ? <>Backed an earlier round? <a href="#/embers">See what you can reclaim.</a></> : "While you wait, sign in and claim EMBER so you're ready."}</p>
     </section>
   );
 }
@@ -312,8 +280,13 @@ function AccountCard({ session, holdings, claimLabel, claim, now, busy, run, sig
   if (!session) {
     return (
       <section className="card">
-        <h2>Join in</h2>
-        <p>A guest account needs no wallet or install. It's a labeled testnet account whose key stays in this browser.</p>
+        <div className="join">
+          <div>
+            <h2>Join in</h2>
+            <p>A guest account needs no wallet or install. It's a labeled testnet account whose key stays in this browser.</p>
+          </div>
+          <img src="/art/mascot-idle.webp" alt="" />
+        </div>
         <div className="stack">
           <button disabled={busy} onClick={() => signIn(createGuest, "Creating your guest account…")}>Start as a guest</button>
           <button disabled={busy} className="ghost" onClick={() => signIn(connectWallet, "Opening wallets…")}>Connect a wallet</button>

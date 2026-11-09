@@ -10,6 +10,12 @@ const ACTION_TEXT = {
   expire: "Close the round",
 } as const;
 
+function toneOf(p: Position): string {
+  if (p.burned > 0n) return "burned";
+  if (p.refundable > 0n) return "refund";
+  return p.locked > 0n ? "locked" : "open";
+}
+
 export function EmbersPage({ session, holdings, faucetLabel, onClaim, now, busy, run }: {
   session: Session;
   holdings: Holdings | null;
@@ -47,13 +53,21 @@ export function EmbersPage({ session, holdings, faucetLabel, onClaim, now, busy,
     <>
       <section className="card">
         <h2>My embers</h2>
+        <div className="ledger-head">
+          <div className="stat">
+            <span className="label">Free to back a mission</span>
+            <span className="big">{showEmber(holdings.balance)}<small> EMBER</small></span>
+          </div>
+          <div className="ash-tally">
+            <div><span className="label">Ash</span><br /><span className="ash-value">{showEmber(holdings.ash)}</span></div>
+            <img src="/art/ash.webp" alt="" />
+          </div>
+        </div>
         <dl className="facts wide">
-          <div><dt>Free</dt><dd>{showEmber(holdings.balance)}</dd></div>
           <div><dt>Committed</dt><dd>{showEmber(totals.committed)}</dd></div>
           <div><dt>Candle-locked</dt><dd>{showEmber(totals.locked)}</dd></div>
           <div><dt>Refundable</dt><dd>{showEmber(totals.refundable)}</dd></div>
           <div><dt>Burned</dt><dd>{showEmber(totals.burned + BigInt(holdings.ash))}</dd></div>
-          <div><dt>Ash</dt><dd>{showEmber(holdings.ash)}</dd></div>
         </dl>
         {settleRounds.length > 0 && (
           <button disabled={busy} onClick={() => run("Settling…", settleAll, "Settled. Your EMBER and storage deposit are back.")}>{reclaimText}</button>
@@ -67,7 +81,10 @@ export function EmbersPage({ session, holdings, faucetLabel, onClaim, now, busy,
       <section className="card">
         <h2>Your missions</h2>
         {positions.length === 0 ? (
-          <p>Nothing is committed right now. <a href="#/">Back a mission</a> and it will show up here until it's settled.</p>
+          <div className="empty">
+            <img src="/art/mascot-sleeping.webp" alt="" />
+            <p>Nothing is committed right now. <a href="#/">Back a mission</a> and it will show up here until it's settled.</p>
+          </div>
         ) : (
           <ul className="positions">
             {positions.map((p) => (
@@ -76,7 +93,11 @@ export function EmbersPage({ session, holdings, faucetLabel, onClaim, now, busy,
                   <span className="title plain">{p.title}</span>
                   <span className="amount">{showEmber(p.record.total)}</span>
                 </div>
-                <p className="hint"><strong>Round {p.record.round_id} · {p.label}.</strong> {p.detail}</p>
+                <div className="row status">
+                  <span className={`pill ${toneOf(p)}`}>{p.label}</span>
+                  <span>Round {p.record.round_id}</span>
+                </div>
+                <p className="hint">{p.detail}</p>
                 {p.action && p.action !== "settle" && (
                   <button className="ghost small" disabled={busy} onClick={() => act(p)}>{ACTION_TEXT[p.action]}</button>
                 )}

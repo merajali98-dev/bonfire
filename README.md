@@ -53,7 +53,8 @@ The curator still chooses which consented missions enter a round, its time windo
 ## Assistance tools and dependencies
 
 - **Assistance tools:** this project was built with AI coding assistants, Claude Code (Anthropic) and Codex (OpenAI), under human direction. All code was reviewed and tested by the team.
-- **Dependencies:** `near-sdk` 5.30.1 and `near-contract-standards` 5.30.1 (MIT/Apache-2.0). For tests: `near-workspaces` 0.24.0, `tokio`, `anyhow`, `serde_json`. For types: TypeScript 7.0.2.
+- **Artwork:** the mascot, fire, candle, ash, flame mark and share image in `apps/web/public` were generated with ChatGPT (OpenAI) under human direction.
+- **Dependencies:** `near-sdk` 5.30.1 and `near-contract-standards` 5.30.1 (MIT/Apache-2.0). For tests: `near-workspaces` 0.24.0, `tokio`, `anyhow`, `serde_json`. For types: TypeScript 7.0.2. The site's display font is Baloo 2 (SIL OFL 1.1), self-hosted through `@fontsource-variable/baloo-2` 5.3.0.
 
 ## License
 

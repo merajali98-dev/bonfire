@@ -2,13 +2,39 @@
   --bg: #140b07;
   --panel: #1f130c;
   --line: #3a2517;
+  --track: #2c1b11;
   --text: #f6ece2;
   --dim: #b9a593;
   --ember: #ff7a2f;
   --glow: #ffc861;
   --good: #7fd18b;
   --bad: #ff8f7d;
+  --display: "Baloo 2 Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: dark;
+}
+
+/* The page's mood follows the round. Set on body so the overscroll area changes too. */
+body[data-mood="candle"] {
+  --bg: #0d0b12;
+  --panel: #17141d;
+  --line: #2f2a38;
+  --track: #24202c;
+  --dim: #aea6b8;
+}
+
+body[data-mood="cold"] {
+  --bg: #100d0c;
+  --panel: #1a1615;
+  --line: #322a27;
+  --track: #28211f;
+  --dim: #b0a59e;
+}
+
+body[data-mood="burned"] {
+  --bg: #1a0d07;
+  --panel: #27150c;
+  --line: #4a2c19;
+  --track: #351f12;
 }
 
 * {
@@ -20,7 +46,37 @@ body {
   background: var(--bg);
   color: var(--text);
   font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  transition: background-color 1.2s ease;
 }
+
+h1,
+h2,
+.brand,
+.big,
+.round-name {
+  font-family: var(--display);
+}
+
+h1 {
+  font-size: clamp(27px, 6.6vw, 38px);
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 4px 0 0;
+  text-wrap: balance;
+}
+
+h2 {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+}
+
+p {
+  margin: 8px 0 0;
+}
+
+/* Layout */
 
 .page {
   max-width: 640px;
@@ -28,6 +84,19 @@ body {
   padding: 16px;
   display: grid;
   gap: 16px;
+}
+
+.home {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.column {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
 }
 
 .top,
@@ -40,6 +109,22 @@ body {
 .top,
 .spread {
   justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  color: var(--ember);
+}
+
+.brand img {
+  width: 26px;
+  height: 26px;
 }
 
 .tabs {
@@ -60,40 +145,10 @@ body {
   border-bottom-color: var(--ember);
 }
 
-.card a {
-  color: var(--glow);
-}
-
-.facts.wide {
-  row-gap: 14px;
-}
-
-.positions {
-  list-style: none;
-  padding: 0;
-  margin: 12px 0 0;
-  display: grid;
-  gap: 16px;
-}
-
-.title.plain {
-  text-decoration: none;
-}
-
-button.small {
-  min-height: 44px;
-  margin-top: 8px;
-}
-
-.brand {
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  color: var(--ember);
-}
-
 .mode,
 .tag,
-.phase {
+.phase,
+.pill {
   font-size: 13px;
   padding: 2px 10px;
   border-radius: 999px;
@@ -107,31 +162,292 @@ button.small {
   border-color: var(--good);
 }
 
-.phase.candle {
+.phase.candle,
+.phase.awaitingselection {
   color: var(--glow);
   border-color: var(--glow);
 }
 
-h1 {
-  font-size: clamp(26px, 7vw, 36px);
-  line-height: 1.15;
-  margin: 8px 0;
+.phase.accepted {
+  color: var(--ember);
+  border-color: var(--ember);
 }
 
-h2 {
+/* The fire */
+
+.hero {
+  min-width: 0;
+}
+
+.scene {
+  --heat: 0.2;
+  position: relative;
+  isolation: isolate;
+  height: clamp(270px, 72vw, 400px);
+  margin-top: 8px;
+}
+
+.bloom {
+  position: absolute;
+  z-index: -2;
+  inset: -12% -6% -6%;
+  background: radial-gradient(closest-side at 50% 66%, #ff7a2f, transparent);
+  opacity: calc(0.05 + var(--heat) * 0.42);
+  transition: opacity 1.2s ease;
+  animation: breathe 3.8s ease-in-out infinite;
+}
+
+.ground {
+  position: absolute;
+  z-index: -1;
+  left: 4%;
+  right: 4%;
+  bottom: -3%;
+  height: 22%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 150, 80, calc(0.05 + var(--heat) * 0.18)), transparent);
+  transition: background 1.2s ease;
+}
+
+.fire {
+  position: absolute;
+  left: 50%;
+  bottom: -6%;
+  height: 108%;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  transition: left 0.9s ease, filter 1.2s ease;
+}
+
+.fire img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+
+.fire img.on {
+  opacity: 1;
+}
+
+.mascot {
+  position: absolute;
+  z-index: 2;
+  left: -3%;
+  bottom: 0;
+  width: 37%;
+  max-width: 190px;
+  animation: pop 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) backwards, bob 4.2s ease-in-out 0.5s infinite;
+}
+
+/* The shrugging mascot brings its own wet logs, so it takes centre stage. */
+.mascot-shrug .mascot {
+  left: 50%;
+  bottom: -5%;
+  width: auto;
+  height: 100%;
+  max-width: none;
+  translate: -50% 0;
+  animation: none;
+}
+
+.mascot-sleeping .mascot {
+  bottom: -6%;
+  animation: pop 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) backwards;
+}
+
+.burned .mascot {
+  left: 0;
+  width: 42%;
+  max-width: 220px;
+}
+
+/* In the candle phase the fire steps back and the candle takes the stage. */
+.has-candle .fire {
+  left: 42%;
+  filter: saturate(0.75) brightness(0.72);
+}
+
+.has-candle .bloom {
+  opacity: 0.1;
+  background: radial-gradient(closest-side at 76% 62%, #ffc861, transparent);
+}
+
+.candle-art {
+  position: absolute;
+  z-index: 1;
+  right: -7%;
+  bottom: -4%;
+  height: 84%;
+  animation: flicker 2.4s ease-in-out infinite;
+}
+
+.has-candle .mascot {
+  left: -5%;
+  width: 30%;
+}
+
+.sparks {
+  position: absolute;
+  inset: 8% 0 30%;
+  pointer-events: none;
+}
+
+.sparks i {
+  position: absolute;
+  bottom: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--glow);
+  box-shadow: 0 0 8px 2px rgba(255, 150, 60, 0.75);
+  opacity: 0;
+  animation: rise linear infinite;
+}
+
+.sparks.burst i {
+  animation-iteration-count: 2;
+}
+
+/* Default styles are the end state, so reduced motion lands on the ash without playing the burn. */
+.burnout {
+  opacity: 0;
+  animation: burn-away 2.6s ease-in 0.5s backwards;
+}
+
+.ash.on {
+  animation: ash-in 1.6s ease 1.6s backwards;
+}
+
+@keyframes breathe {
+  50% {
+    transform: scale(1.04);
+    filter: brightness(1.18);
+  }
+}
+
+@keyframes bob {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes flicker {
+  0%,
+  100% {
+    filter: brightness(1) drop-shadow(0 0 14px rgba(255, 200, 97, 0.45));
+  }
+  40% {
+    filter: brightness(1.08) drop-shadow(0 0 24px rgba(255, 200, 97, 0.65));
+  }
+  60% {
+    filter: brightness(0.96) drop-shadow(0 0 10px rgba(255, 200, 97, 0.35));
+  }
+}
+
+@keyframes rise {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--drift), -190px) scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes burn-away {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    filter: brightness(1.7);
+  }
+}
+
+@keyframes ash-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* What the fire means */
+
+.readout {
+  margin-top: 16px;
+}
+
+.round-name {
   font-size: 19px;
-  margin: 0;
+  font-weight: 700;
 }
 
-p {
-  margin: 8px 0 0;
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px 20px;
+  margin-top: 8px;
 }
 
-.hero p,
+.stat {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+}
+
+.label {
+  font-size: 13px;
+  color: var(--dim);
+}
+
+.big {
+  font-size: clamp(32px, 9vw, 44px);
+  font-weight: 800;
+  line-height: 1.05;
+  color: var(--glow);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.big small {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--dim);
+}
+
+.note {
+  font-size: 14px;
+  color: var(--dim);
+  overflow-wrap: anywhere;
+}
+
+.phaseline {
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+.rule,
 .hint,
 .muted,
 footer {
   color: var(--dim);
+}
+
+.rule {
+  margin-top: 12px;
 }
 
 .hint,
@@ -139,15 +455,18 @@ footer {
   font-size: 14px;
 }
 
+/* Cards */
+
 .card {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 16px;
+  transition: background-color 1.2s ease, border-color 1.2s ease;
 }
 
-.phaseline {
-  font-weight: 600;
+.card a {
+  color: var(--glow);
 }
 
 .facts {
@@ -157,6 +476,11 @@ footer {
   margin: 14px 0 0;
 }
 
+.facts.wide {
+  grid-template-columns: repeat(2, 1fr);
+  row-gap: 14px;
+}
+
 .facts dt {
   font-size: 13px;
   color: var(--dim);
@@ -164,8 +488,18 @@ footer {
 
 .facts dd {
   margin: 0;
+  font-family: var(--display);
+  font-size: 19px;
   font-weight: 700;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
+}
+
+.facts dd small {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dim);
 }
 
 .missions {
@@ -184,21 +518,35 @@ footer {
   overflow-wrap: anywhere;
 }
 
+.card a.title {
+  color: var(--text);
+}
+
+.title.plain {
+  text-decoration: none;
+  font-weight: 600;
+}
+
 .won {
   color: var(--glow);
 }
 
 .amount {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .bar {
   position: relative;
-  height: 10px;
+  height: 12px;
   margin-top: 6px;
   border-radius: 6px;
-  background: #2c1b11;
+  background: var(--track);
+  transition: background-color 1.2s ease;
 }
 
 .fill {
@@ -212,9 +560,105 @@ footer {
   position: absolute;
   top: -3px;
   width: 2px;
-  height: 16px;
+  height: 18px;
   background: var(--text);
 }
+
+/* My embers */
+
+.narrow {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.ledger-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.ash-tally {
+  display: flex;
+  align-items: flex-end;
+  flex: none;
+  text-align: right;
+}
+
+.ash-tally img {
+  width: 92px;
+  height: 92px;
+  margin: -24px -8px -14px 0;
+}
+
+.ash-value {
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.positions {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  gap: 16px;
+}
+
+.positions li + li {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.status {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--dim);
+}
+
+.pill.open {
+  color: var(--good);
+  border-color: var(--good);
+}
+
+.pill.locked {
+  color: var(--glow);
+  border-color: var(--glow);
+}
+
+.pill.refund {
+  color: var(--text);
+  border-color: var(--dim);
+}
+
+.pill.burned {
+  color: var(--ember);
+  border-color: var(--ember);
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.empty img {
+  width: 104px;
+  height: 104px;
+  flex: none;
+  margin: -6px -6px -6px -10px;
+}
+
+.empty p {
+  margin: 0;
+}
+
+/* Controls */
 
 button {
   font: inherit;
@@ -238,6 +682,11 @@ button.ghost {
   background: transparent;
   color: var(--text);
   border: 1px solid var(--line);
+}
+
+button.small {
+  min-height: 44px;
+  margin-top: 8px;
 }
 
 button.link {
@@ -297,11 +746,13 @@ button.link {
 }
 
 .field input {
-  font: inherit;
-  font-size: 18px;
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   width: 100%;
-  min-height: 48px;
-  padding: 8px 12px;
+  min-height: 52px;
+  padding: 6px 12px;
   border-radius: 10px;
   border: 1px solid var(--line);
   background: var(--bg);
@@ -319,6 +770,24 @@ button.link {
 
 .warn {
   color: var(--glow);
+}
+
+.join {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.join > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.join img {
+  width: 84px;
+  height: 84px;
+  flex: none;
+  margin: -6px -8px -6px 0;
 }
 
 /* Pinned so a status is visible from wherever the button was on a phone. */
@@ -368,8 +837,52 @@ code {
   outline-offset: 2px;
 }
 
+/* On a wide screen the fire stays in view while you read the missions and commit. */
+@media (min-width: 960px) {
+  .page {
+    max-width: 1120px;
+    padding: 20px 32px;
+  }
+
+  .home {
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
+    gap: 40px;
+    align-items: start;
+  }
+
+  .scene {
+    height: min(42vh, 400px);
+    min-height: 300px;
+  }
+
+  .narrow {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  footer {
+    margin-top: 16px;
+  }
+}
+
+/* Only when the whole hero fits, or its lower part would be out of reach. */
+@media (min-width: 960px) and (min-height: 800px) {
+  .hero {
+    position: sticky;
+    top: 16px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .fill {
-    transition: none;
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .sparks {
+    display: none;
   }
 }
