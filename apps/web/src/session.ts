@@ -16,6 +16,13 @@ export interface Session {
   signOut(): Promise<void>;
 }
 
+/** A transaction that reached the chain and failed. It keeps its hash so the failure can be linked. */
+export class TxFailure extends Error {
+  constructor(message: string, readonly hash: string | null) {
+    super(message);
+  }
+}
+
 export function explain(error: unknown): string {
   const text = error instanceof Error ? error.message : typeof error === "string" ? error : JSON.stringify(error);
   const code = parseErrorCode(text ?? "");
@@ -63,7 +70,7 @@ function walletSession(active: NearConnector, accountId: string, walletName: str
         actions: [{ type: "FunctionCall", params: { methodName: method, args, gas: GAS.toString(), deposit: depositYocto.toString() } }],
       })) as unknown as FinalOutcome;
       if (outcome.status && typeof outcome.status === "object" && "Failure" in outcome.status) {
-        throw new Error(JSON.stringify(outcome.status));
+        throw new TxFailure(JSON.stringify(outcome.status), outcome.transaction?.hash ?? outcome.transaction_outcome?.id ?? null);
       }
       return outcome.transaction?.hash ?? outcome.transaction_outcome?.id ?? null;
     },
@@ -117,8 +124,16 @@ function guestSession(guest: StoredGuest): Session {
     async call(method, args, depositYocto) {
       const { Account } = await import("near-api-js");
       const account = new Account(guest.accountId, RPC_URL, guest.secretKey as `ed25519:${string}`);
-      const response = await account.callFunctionRaw({ contractId: CONTRACT, methodName: method, args: args as Record<string, unknown>, deposit: depositYocto, gas: GAS });
-      return response.transaction.hash;
+      try {
+        const response = await account.callFunctionRaw({ contractId: CONTRACT, methodName: method, args: args as Record<string, unknown>, deposit: depositYocto, gas: GAS });
+        return response.transaction.hash;
+      } catch (error) {
+        const failed = error as { txHash?: string; transactionResult?: { status?: unknown; transaction?: { hash?: string } } };
+        const hash = failed.txHash ?? failed.transactionResult?.transaction?.hash ?? null;
+        if (!hash) throw error;
+        const status = failed.transactionResult?.status;
+        throw new TxFailure(`${error instanceof Error ? error.message : String(error)} ${status ? JSON.stringify(status) : ""}`, hash);
+      }
     },
     async signOut() {
       try {

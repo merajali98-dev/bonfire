@@ -4,6 +4,7 @@ import { Brief } from "./Brief";
 import { CONTRACT, EXPLORER_TX, loadHoldings, loadSnapshot, view, type Holdings, type Snapshot } from "./chain";
 import { EmbersPage } from "./Embers";
 import { Hero } from "./Fire";
+import { LabPage } from "./Lab";
 import { LedgerPage } from "./Ledger";
 import { PracticePage } from "./Practice";
 import { countdown, parseEmber, shortAccount, showEmber, showNear } from "./format";
@@ -113,12 +114,15 @@ export function App() {
         <a href="#/embers" className={route === "embers" ? "on" : ""} aria-current={route === "embers" ? "page" : undefined}>My embers</a>
         <a href="#/practice" className={route === "practice" ? "on" : ""} aria-current={route === "practice" ? "page" : undefined}>Practice</a>
         <a href="#/ledger" className={route === "ledger" ? "on" : ""} aria-current={route === "ledger" ? "page" : undefined}>Ledger</a>
+        <a href="#/lab" className={route === "lab" ? "on" : ""} aria-current={route === "lab" ? "page" : undefined}>Steal the fire</a>
       </nav>
 
       {route === "practice" ? (
         <PracticePage />
       ) : route === "ledger" ? (
         <LedgerPage />
+      ) : route === "lab" ? (
+        <LabPage session={session} round={snapshot?.round ?? null} />
       ) : route === "embers" ? (
         <div className="narrow">
           {session ? <EmbersPage session={session} holdings={holdings} faucetLabel={claimLabel} onClaim={claim} now={now} busy={busy} run={run} /> : account}
@@ -155,7 +159,7 @@ export function App() {
   );
 }
 
-const ROUTES = { "#/embers": "embers", "#/practice": "practice", "#/ledger": "ledger" } as const;
+const ROUTES = { "#/embers": "embers", "#/practice": "practice", "#/ledger": "ledger", "#/lab": "lab" } as const;
 type Route = (typeof ROUTES)[keyof typeof ROUTES] | "home";
 const routeOf = (): Route => ROUTES[window.location.hash as keyof typeof ROUTES] ?? "home";
 
