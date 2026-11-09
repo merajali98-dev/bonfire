@@ -56,9 +56,9 @@ interface MissionSpec {
 
 const MISSION_SETS: Record<string, MissionSpec[]> = {
   "round-1": [
-    { title: "EMBER sticker and mascot pack", brief: "docs/briefs/round-1/mascot-pack.md", maker: "maker1" },
+    { title: "EMBER sticker pack", brief: "docs/briefs/round-1/sticker-pack.md", maker: "maker1" },
     { title: "Fire Keepers leaderboard", brief: "docs/briefs/round-1/fire-keepers.md", maker: "maker2" },
-    { title: "Social share card", brief: "docs/briefs/round-1/share-card.md", maker: "maker3" },
+    { title: "15-second mascot animation", brief: "docs/briefs/round-1/mascot-animation.md", maker: "maker3" },
   ],
   demo: [
     { title: "[demo] Delivery A", brief: "docs/briefs/demo.md", maker: "maker1" },
