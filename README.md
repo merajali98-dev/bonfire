@@ -10,7 +10,7 @@ Built at NEAR HACKATHON (Memecoins With Mechanics; Social Money). Work in progre
 
 | Part | State |
 | --- | --- |
-| `contracts/bonfire` — EMBER token, Hearth, nominations, rounds, candle close, matching payout, Ash, settlement | Implemented; unit and sandbox tests passing in CI; not yet deployed |
+| `contracts/bonfire` — EMBER token, Hearth, nominations, rounds, candle close, matching payout, Ash, settlement | Implemented; unit and sandbox tests passing in CI; running as the development deployment below |
 | `packages/protocol` — TypeScript types for the contract views and error codes | Implemented |
 | `scripts/testnet.ts` — deploy, seed, run and settle rounds from the CLI ([runbook](scripts/README.md)) | Used for the development deployment on testnet |
 | `packages/simulator` — seeded 60-day scenarios, backer strategies and rule sweeps ([report](docs/simulation.md)) | Implemented; rule math shared with the contract through fixtures |

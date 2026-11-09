@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { COMMIT_DEPOSIT, type RoundView } from "@bonfire/protocol";
+import { Brief } from "./Brief";
 import { CONTRACT, EXPLORER_TX, loadHoldings, loadSnapshot, view, type Holdings, type Snapshot } from "./chain";
 import { EmbersPage } from "./Embers";
 import { Hero } from "./Fire";
@@ -173,16 +174,17 @@ function RoundCard({ snapshot, session, busy, run }: { snapshot: Snapshot; sessi
             return (
               <li key={mission.nomination_id}>
                 <div className="row spread">
-                  <a href={mission.brief_uri} target="_blank" rel="noreferrer" className="title">
+                  <span className="title plain">
                     {mission.title}
                     {r.winner === i && <span className="won"> · won</span>}
-                  </a>
+                  </span>
                   <span className="amount">{showEmber(live)}</span>
                 </div>
                 <div className="bar" aria-hidden="true">
                   <div className="fill" style={{ width: scale(live) }} />
                   <div className="mark" style={{ left: scale(BigInt(r.threshold)) }} />
                 </div>
+                <Brief mission={mission} />
                 <Share target={{ kind: "mission", round: r.id, mission: i }} text={`${mission.title} has ${showEmber(live)} EMBER behind it on BONFIRE. Back it, and if it wins and ships, the EMBER burns.`} />
               </li>
             );

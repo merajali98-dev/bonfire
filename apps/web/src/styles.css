@@ -679,6 +679,31 @@ footer {
   display: none;
 }
 
+.brief {
+  margin: 6px 0 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.brief h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.brief ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+
 .share-body {
   margin-top: 6px;
 }
