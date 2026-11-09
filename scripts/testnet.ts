@@ -18,7 +18,7 @@ import type { Audit, CommitmentView, CreateRoundArgs, NextRoundTerms, Nomination
 
 const exec = promisify(execFile);
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const MANIFEST_PATH = join(ROOT, "deployments", "testnet-dev.json");
+const DEV_MANIFEST_PATH = join(ROOT, "deployments", "testnet-dev.json");
 const DEFAULT_WASM = join(ROOT, "contracts", "bonfire", "target", "near", "bonfire.wasm");
 const RPC_URL = process.env.BONFIRE_RPC ?? "https://rpc.testnet.fastnear.com";
 const NEAR_BIN = process.env.NEAR_BIN ?? "near";
@@ -85,9 +85,16 @@ const { values: opts, positionals } = parseArgs({
     file: { type: "string" },
     uri: { type: "string" },
     accounts: { type: "string" },
+    deployment: { type: "string", default: "dev" },
+    contract: { type: "string" },
+    fund: { type: "string" },
+    send: { type: "boolean", default: false },
   },
 });
 const dryRun = opts["dry-run"];
+if (opts.deployment !== "dev" && opts.deployment !== "keyless") throw new Error("--deployment is dev or keyless.");
+/** deployments/testnet.json is the keyless final deployment; testnet-dev.json the development one. */
+const MANIFEST_PATH = opts.deployment === "keyless" || positionals[0] === "keyless" ? join(ROOT, "deployments", "testnet.json") : DEV_MANIFEST_PATH;
 
 // ------------------------------------------------------------------ helpers
 
@@ -755,6 +762,114 @@ function cmdGuestsVercel(): Promise<void> {
   return Promise.resolve();
 }
 
+// ------------------------------------------------------------------ the keyless final deployment
+
+const KEYLESS_NOTE =
+  "Final deployment. The contract account was created, funded, deployed and initialized in one transaction with no AddKey action, so it has never had an access key. Every other account is a team-run, labeled demo actor.";
+/** The operating reserve the contract keeps for nominations, faucet claims and Ash storage. */
+const RESERVE = 5n * ONE_NEAR;
+/** Room for the state `new` writes. Measured well below this in the sandbox. */
+const INIT_STATE = ONE_NEAR / 2n;
+const PLACEHOLDER_KEY = "ed25519:11111111111111111111111111111111";
+
+const stripAnsi = (text: string) => text.replace(/\x1b\[[0-9;]*m/g, "");
+
+/** Code storage plus init state plus the reserve, rounded up to 0.1 NEAR. */
+function keylessFunding(wasmBytes: number): bigint {
+  const tenth = ONE_NEAR / 10n;
+  const needed = BigInt(wasmBytes) * STORAGE_BYTE_COST + INIT_STATE + RESERVE;
+  return ((needed + tenth - 1n) / tenth) * tenth;
+}
+
+/** Fails unless the unsigned transaction holds exactly these four actions, in order. */
+function assertKeylessActions(display: string, contract: string, codeHash: string, fund: bigint): void {
+  const text = stripAnsi(display);
+  const actions = text.split("\n").filter((line) => /^\W*-- /.test(line)).map((line) => line.replace(/^\W*-- /, "").trim());
+  const problems: string[] = [];
+  if (actions.length !== 4) problems.push(`expected 4 actions, found ${actions.length}: ${actions.join(" | ")}`);
+  if (!actions[0]?.startsWith(`create account:`) || !actions[0].includes(contract)) problems.push(`action 1 is not CreateAccount ${contract}`);
+  if (!actions[1]?.startsWith("transfer deposit:")) problems.push("action 2 is not a Transfer");
+  if (!actions[2]?.includes(`deploy code <${codeHash}>`)) problems.push(`action 3 does not deploy code ${codeHash}`);
+  if (!actions[3]?.startsWith("function call:") || !/method name:\s+new\b/.test(text)) problems.push("action 4 is not the call to new");
+  if (/add[- ]?(access )?key/i.test(text)) problems.push("the transaction adds a key");
+  if (!text.includes(`receiver_id:  ${contract}`)) problems.push(`the receiver is not ${contract}`);
+  if (problems.length > 0) throw new Error(`The prepared transaction is wrong, so nothing was sent:\n- ${problems.join("\n- ")}`);
+  console.log(`Checked the unsigned transaction: CreateAccount, Transfer ${showNear(fund)}, DeployContract ${codeHash}, FunctionCall new. No AddKey.`);
+}
+
+/**
+ * Prepares the final deployment: one transaction from a parent account that creates the
+ * contract account, funds it, deploys res/bonfire.wasm and calls `new`, with no AddKey. It only
+ * prepares and checks the transaction unless --send is passed. Sending is irreversible, and
+ * the person who owns the parent account runs it.
+ */
+async function cmdKeyless(): Promise<void> {
+  const contract = opts.contract;
+  const dot = contract?.indexOf(".") ?? -1;
+  if (!contract || dot <= 0) throw new Error("Pass --contract <name>.<parent>.testnet, a new sub-account of a parent account whose key you hold.");
+  const parent = contract.slice(dot + 1);
+  if (!parent.endsWith(".testnet")) throw new Error("The keyless deployment is for testnet; the parent must end in .testnet.");
+
+  const check = spawnSync(process.execPath, ["--disable-warning=ExperimentalWarning", join(ROOT, "scripts", "res.ts"), "check"], { cwd: ROOT, encoding: "utf8", windowsHide: true });
+  if (check.status !== 0) throw new Error(`res/ is not the current reproducible build, so it can't be deployed.\n${check.stderr || check.stdout}`);
+  const build = JSON.parse(readFileSync(join(ROOT, "res", "build.json"), "utf8")) as { source_commit: string; code_hash: string; sha256: string };
+  const wasmPath = join(ROOT, "res", "bonfire.wasm");
+  const bytes = readFileSync(wasmPath);
+  const codeHash = base58(createHash("sha256").update(bytes).digest());
+  if (codeHash !== build.code_hash) throw new Error(`res/bonfire.wasm hashes to ${codeHash}, but res/build.json says ${build.code_hash}.`);
+
+  if (existsSync(MANIFEST_PATH)) {
+    m = loadManifest();
+    if (m.accounts.contract !== contract) throw new Error(`${MANIFEST_PATH} already describes ${m.accounts.contract}.`);
+    if (m.code_hash) throw new Error(`${contract} was already deployed (code hash ${m.code_hash}). Check it with: npm run testnet -- status --deployment keyless`);
+  } else {
+    const dev = JSON.parse(readFileSync(DEV_MANIFEST_PATH, "utf8")) as Manifest;
+    m = { network: "testnet", note: KEYLESS_NOTE, prefix: dev.prefix, accounts: { ...dev.accounts, contract }, wasm_sha256: null, code_hash: null, deployed_at: null, transactions: [] };
+  }
+
+  const fund = opts.fund ? near(opts.fund) : keylessFunding(bytes.length);
+  const [target, parentInfo] = await Promise.all([accountInfo(contract), accountInfo(parent)]);
+  if (target) throw new Error(`${contract} already exists. A keyless deployment needs an account that has never existed.`);
+  if (!parentInfo) throw new Error(`The parent account ${parent} doesn't exist.`);
+  const spare = BigInt(parentInfo.amount) - BigInt(parentInfo.storage_usage) * STORAGE_BYTE_COST;
+  if (spare < fund + ONE_NEAR / 10n) throw new Error(`${parent} can spend about ${showNear(spare)}; the deployment needs ${showNear(fund)} plus gas.`);
+
+  const base = [
+    "transaction", "construct-transaction", parent, "receiver-id", contract,
+    "add-action", "create-account",
+    "add-action", "transfer", `${fund} yoctonear`,
+    "add-action", "deploy-contract", "use-file", wasmPath,
+    "with-init-call", "new", "json-args", JSON.stringify(genesisArgs()),
+    "prepaid-gas", "100 Tgas", "attached-deposit", "0 NEAR",
+    "skip", "network-config", "testnet",
+  ];
+  const unsigned = await exec(NEAR_BIN, [...base, "sign-later", "--signer-public-key", PLACEHOLDER_KEY, "--nonce", "1", "--block-hash", NO_CODE, "display"], { maxBuffer: 50 * 1024 * 1024, windowsHide: true });
+  assertKeylessActions(unsigned.stdout + unsigned.stderr, contract, codeHash, fund);
+
+  console.log(`\nContract: ${contract}  (parent ${parent})`);
+  console.log(`Wasm:     res/bonfire.wasm, ${bytes.length} bytes, sha256 ${build.sha256}, built from ${build.source_commit}`);
+  console.log(`Funding:  ${showNear(fund)} (code storage, init state, and a ${showNear(RESERVE)} reserve)`);
+  console.log(`Genesis:  ${JSON.stringify(genesisArgs())}`);
+  if (!opts.send) {
+    console.log("\nNothing was sent. This is irreversible: the account can never be changed or upgraded after it.");
+    console.log(`To send it, the owner of ${parent} runs:\n  npm run testnet -- keyless --contract ${contract} --send`);
+    return;
+  }
+
+  await runNear("keyless deploy: create, fund, deploy, new", parent, [...base, "sign-with-legacy-keychain", "send"]);
+  const info = await accountInfo(contract);
+  if (info?.code_hash !== codeHash) throw new Error(`${contract} holds code ${info?.code_hash ?? "none"}, not ${codeHash}.`);
+  const keys = await rpc<{ keys: unknown[] }>({ request_type: "view_access_key_list", finality: "final", account_id: contract });
+  if (keys.keys.length !== 0) throw new Error(`${contract} has ${keys.keys.length} access key(s). It is not keyless.`);
+  const audit = await view<Audit>("audit");
+  m.wasm_sha256 = build.sha256;
+  m.code_hash = codeHash;
+  m.deployed_at = new Date().toISOString();
+  saveManifest(m);
+  console.log(`\nDeployed ${contract} with no access keys. Code hash ${codeHash}. Operating surplus ${showNear(audit.operating_surplus)}.`);
+  console.log("Next: npm run testnet -- seed --deployment keyless");
+}
+
 /** The whole first deployment in one go. Every step skips work that is already done. */
 async function cmdFirstRun(): Promise<void> {
   await cmdAccounts();
@@ -784,6 +899,7 @@ const COMMANDS: Record<string, () => Promise<void>> = {
   "first-run": cmdFirstRun,
   guests: cmdGuests,
   "guests-vercel": cmdGuestsVercel,
+  keyless: cmdKeyless,
 };
 
 async function main(): Promise<void> {
@@ -791,7 +907,7 @@ async function main(): Promise<void> {
   if (name === "doctor") return cmdDoctor();
   const command = name ? COMMANDS[name] : undefined;
   if (!command) throw new Error(`Commands: doctor, ${Object.keys(COMMANDS).join(", ")}. See scripts/README.md.`);
-  if (name !== "accounts" && name !== "first-run") m = loadManifest();
+  if (name !== "accounts" && name !== "first-run" && name !== "keyless") m = loadManifest();
   await command();
 }
 

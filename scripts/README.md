@@ -45,3 +45,14 @@ npm run testnet -- expire <round>                # after a missed deadline
 `--as` takes a role from the manifest or a full account ID. `--backing` is the whole backing period, and the candle is its final part. The curator picks the missions, time windows and reviewer; the contract computes each round's budget, threshold and target, and `status` shows what the next round would get.
 
 `settle-all` covers the accounts in the manifest plus any in `--accounts`, because the contract keeps no list of who backed a round. Anyone can settle any account with `settle <round> <account>`.
+
+## The keyless final deployment
+
+The final contract account is created, funded, deployed and initialized in one transaction from a parent account, with no AddKey action, so it never has an access key. It deploys only `res/bonfire.wasm`, the reproducible CI build, and refuses to run if `res/` isn't current (`node scripts/res.ts check`).
+
+```sh
+npm run testnet -- keyless --contract <name>.<parent>.testnet          # prepare and check only; sends nothing
+npm run testnet -- keyless --contract <name>.<parent>.testnet --send   # irreversible; the owner of <parent> runs it
+```
+
+Without `--send`, it builds the unsigned transaction offline and fails unless it holds exactly CreateAccount, Transfer, DeployContract (the `res/` code hash) and FunctionCall `new`, with no AddKey. It funds code storage, init state and a 5 NEAR operating reserve (`--fund` overrides). With `--send`, it then checks that the account holds the `res/` code hash and has no access keys, and records the deployment in `deployments/testnet.json`. The curator, distribution, stoker, maker and backer accounts are reused from the development manifest. Run the other commands against it with `--deployment keyless`. The sandbox test `keyless_deploy_in_one_transaction` sends the same four actions on the wasm.

@@ -11,6 +11,7 @@
 
 use anyhow::{bail, Result};
 use near_workspaces::network::Sandbox;
+use near_workspaces::operations::Function;
 use near_workspaces::result::ExecutionFinalResult;
 use near_workspaces::types::{Gas, NearToken};
 use near_workspaces::{Account, AccountId, Contract, Worker};
@@ -796,5 +797,58 @@ async fn simulator_replay_matches_wasm() -> Result<()> {
     metric("replay: rounds matched", outcomes.len());
     metric("replay: outcomes", outcomes.join(", "));
     metric("replay: draws", format!("{draws:?}"));
+    Ok(())
+}
+
+// ------------------------------------------------------------------ keyless deployment
+
+/// The shape of the final deployment, as `npm run testnet -- keyless` builds it: one
+/// transaction from a parent creates the account, funds it, deploys the code and calls `new`,
+/// with no AddKey. The account never has a key, and `new` can't run twice.
+#[tokio::test]
+async fn keyless_deploy_in_one_transaction() -> Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let root = worker.root_account()?;
+    let parent = make_account(&root, "parent", 20).await?;
+    let curator = make_account(&root, "curator", 5).await?;
+    let dist = make_account(&root, "dist", 5).await?;
+    let id: AccountId = format!("fire.{}", parent.id()).parse()?;
+    let genesis = json!({
+        "curator": curator.id(),
+        "distribution_account": dist.id(),
+        "distribution_amount": (850_000 * EMBER).to_string(),
+        "faucet_pool": (150_000 * EMBER).to_string(),
+        "faucet_amount": (1_000 * EMBER).to_string(),
+        "faucet_interval_ms": 86_400_000u64,
+        "nominate_min_ash": (1_000 * EMBER).to_string(),
+        "rules": {
+            "budget_bps": 2_500, "min_budget": NEAR.to_string(),
+            "initial_threshold": (10_000 * EMBER).to_string(), "min_threshold": (1_000 * EMBER).to_string(),
+            "up_bps": 10_500, "down_bps": 8_500, "target_multiple": 4,
+        },
+    });
+
+    let res = parent
+        .batch(&id)
+        .create_account()
+        .transfer(NearToken::from_millinear(8_800))
+        .deploy(&wasm()?)
+        .call(Function::new("new").args_json(genesis.clone()).gas(Gas::from_tgas(100)))
+        .transact()
+        .await?;
+    assert!(res.is_success(), "keyless deploy failed: {res:?}");
+    metric("gas: keyless deploy, whole transaction (TGas)", tgas(res.total_gas_burnt));
+
+    assert_eq!(worker.view_access_keys(&id).await?.len(), 0, "the contract account has a key");
+    let config = worker.view(&id, "get_config").await?.json::<Value>()?;
+    assert_eq!(config["curator"], curator.id().as_str());
+    assert_eq!(config["rules"]["up_bps"], 10_500);
+    let audit = worker.view(&id, "audit").await?.json::<Value>()?;
+    assert_eq!(u(&audit["total_supply"]), 1_000_000 * EMBER);
+    assert_reconciled(&audit);
+    metric("keyless deploy: operating surplus (yoctoNEAR)", u(&audit["operating_surplus"]));
+
+    let again = curator.call(&id, "new").args_json(genesis).max_gas().transact().await?;
+    assert_fails(&again, "already been initialized");
     Ok(())
 }
