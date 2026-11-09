@@ -658,6 +658,68 @@ footer {
   margin: 0;
 }
 
+/* Sharing */
+
+.share {
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+.share summary {
+  display: inline-block;
+  padding: 6px 0;
+  color: var(--glow);
+  cursor: pointer;
+  list-style: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.share summary::-webkit-details-marker {
+  display: none;
+}
+
+.share-body {
+  margin-top: 6px;
+}
+
+.share-body img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--track);
+}
+
+.share-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.share-actions button,
+.action {
+  margin: 0;
+  min-height: 44px;
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--ember);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.card a.action,
+a.action {
+  color: #1b0d05;
+}
+
 /* Controls */
 
 button {

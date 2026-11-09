@@ -3,12 +3,19 @@ import type { Holdings } from "./chain";
 import { countdown, showEmber } from "./format";
 import type { Session } from "./session";
 import type { ActionProps } from "./App";
+import { Share } from "./Share";
 
 const ACTION_TEXT = {
   withdraw: "Withdraw",
   select: "Draw the candle",
   expire: "Close the round",
 } as const;
+
+function receiptText(p: Position): string {
+  if (p.burned > 0n) return `I burned ${showEmber(p.burned)} EMBER for ${p.title} on BONFIRE. The work shipped.`;
+  if (p.refundable > 0n && p.locked === 0n) return `I backed ${p.title} on BONFIRE with ${showEmber(p.record.total)} EMBER. It didn't burn, so it comes back.`;
+  return `I fed the fire: ${showEmber(p.record.total)} EMBER for ${p.title} on BONFIRE. It burns only if the mission wins and the work is accepted.`;
+}
 
 function toneOf(p: Position): string {
   if (p.burned > 0n) return "burned";
@@ -101,6 +108,7 @@ export function EmbersPage({ session, holdings, faucetLabel, onClaim, now, busy,
                 {p.action && p.action !== "settle" && (
                   <button className="ghost small" disabled={busy} onClick={() => act(p)}>{ACTION_TEXT[p.action]}</button>
                 )}
+                <Share label="Share my receipt" target={{ kind: "receipt", round: p.record.round_id, mission: p.record.mission, account: session.accountId }} text={receiptText(p)} />
               </li>
             ))}
           </ul>

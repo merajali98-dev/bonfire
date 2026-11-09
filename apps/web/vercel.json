@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/card.ts": { "includeFiles": "card-assets/**" }
+  },
+  "rewrites": [
+    { "source": "/s/r/:round", "destination": "/api/card?html=1&kind=round&round=:round" },
+    { "source": "/s/m/:round/:mission", "destination": "/api/card?html=1&kind=mission&round=:round&mission=:mission" },
+    { "source": "/s/p/:round/:mission/:account", "destination": "/api/card?html=1&kind=receipt&round=:round&mission=:mission&account=:account" }
+  ]
+}

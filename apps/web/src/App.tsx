@@ -5,6 +5,7 @@ import { EmbersPage } from "./Embers";
 import { Hero } from "./Fire";
 import { countdown, parseEmber, shortAccount, showEmber, showNear } from "./format";
 import { sceneOf } from "./scene";
+import { Share } from "./Share";
 import { connectWallet, createGuest, explain, restoreGuest, restoreWallet, type Session } from "./session";
 
 type Notice = { tone: "busy" | "good" | "bad"; text: string; hash?: string | null };
@@ -182,6 +183,7 @@ function RoundCard({ snapshot, session, busy, run }: { snapshot: Snapshot; sessi
                   <div className="fill" style={{ width: scale(live) }} />
                   <div className="mark" style={{ left: scale(BigInt(r.threshold)) }} />
                 </div>
+                <Share target={{ kind: "mission", round: r.id, mission: i }} text={`${mission.title} has ${showEmber(live)} EMBER behind it on BONFIRE. Back it, and if it wins and ships, the EMBER burns.`} />
               </li>
             );
           })}

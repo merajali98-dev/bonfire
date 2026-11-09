@@ -3,6 +3,7 @@ import type { RoundView } from "@bonfire/protocol";
 import type { Snapshot } from "./chain";
 import { countdown, showEmber, showNear } from "./format";
 import { clockOf, leaderOf, sceneOf, type Scene } from "./scene";
+import { Share } from "./Share";
 
 const art = (name: string) => `/art/${name}.webp`;
 
@@ -121,6 +122,14 @@ function Headline({ round }: { round: RoundView }) {
   return null;
 }
 
+function roundText(round: RoundView): string {
+  const r = round.round;
+  if (round.phase === "Accepted") return `Round ${r.id} on BONFIRE: ${showEmber(r.burned)} EMBER burned after the work was accepted.`;
+  if (["Backing", "Candle", "AwaitingSelection", "Scheduled"].includes(round.phase)) return `Round ${r.id} on BONFIRE: which mission gets built? Back one, and the EMBER burns only if the work ships.`;
+  if (round.phase === "AwaitingWork" || round.phase === "AwaitingReview") return `Round ${r.id} on BONFIRE has a winner. The EMBER burns only if the work is accepted.`;
+  return `Round ${r.id} on BONFIRE ended without a burn, so the EMBER comes back.`;
+}
+
 /** The first thing on Home: the fire, and what it means right now. */
 export function Hero({ snapshot, now }: { snapshot: Snapshot | null; now: number }) {
   const round = snapshot?.round ?? null;
@@ -145,6 +154,7 @@ export function Hero({ snapshot, now }: { snapshot: Snapshot | null; now: number
             {clock && <Stat label={clock.label} value={countdown(clock.ms)} />}
           </div>
           <p className="phaseline">{phaseLine(round, nowChain)}</p>
+          <Share label="Share this round" target={{ kind: "round", round: round.round.id }} text={roundText(round)} />
         </div>
       )}
       <p className="rule">Put your EMBER behind the mission you want made. If it wins and the work is accepted, your EMBER burns and the creator gets paid. Otherwise you get it back.</p>

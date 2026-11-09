@@ -15,7 +15,7 @@ Built at NEAR HACKATHON (Memecoins With Mechanics; Social Money). Work in progre
 | `scripts/testnet.ts` — deploy, seed, run and settle rounds from the CLI ([runbook](scripts/README.md)) | Used for the development deployment on testnet |
 | `packages/simulator` — seeded 60-day scenarios, backer strategies and rule sweeps ([report](docs/simulation.md)) | Implemented; rule math shared with the contract through fixtures |
 | Development deployment — `bonfire-meraj-contract.testnet` (has an access key; every account is a team-run demo actor) | One labeled demo round accepted on testnet: 15,000 EMBER burned, 0.75 test NEAR paid |
-| `apps/web` — live round, guest account or wallet sign-in, faucet, commit, and My embers with settle ([site](https://bonfire-opal.vercel.app), [setup](apps/web/README.md)) | In progress; signed commits confirmed on testnet from a guest on a phone and from a wallet |
+| `apps/web` — live round, guest account or wallet sign-in, faucet, commit, My embers with settle, and share cards rendered from chain data ([site](https://bonfire-opal.vercel.app), [setup](apps/web/README.md)) | In progress; signed commits confirmed on testnet from a guest on a phone and from a wallet |
 | Final keyless deployment | Not started |
 
 Claims in this README are limited to what the repository currently contains.
@@ -54,7 +54,7 @@ The curator still chooses which consented missions enter a round, its time windo
 
 - **Assistance tools:** this project was built with AI coding assistants, Claude Code (Anthropic) and Codex (OpenAI), under human direction. All code was reviewed and tested by the team.
 - **Artwork:** the mascot, fire, candle, ash, flame mark and share image in `apps/web/public` were generated with ChatGPT (OpenAI) under human direction.
-- **Dependencies:** `near-sdk` 5.30.1 and `near-contract-standards` 5.30.1 (MIT/Apache-2.0). For tests: `near-workspaces` 0.24.0, `tokio`, `anyhow`, `serde_json`. For types: TypeScript 7.0.2. The site's display font is Baloo 2 (SIL OFL 1.1), self-hosted through `@fontsource-variable/baloo-2` 5.3.0.
+- **Dependencies:** `near-sdk` 5.30.1 and `near-contract-standards` 5.30.1 (MIT/Apache-2.0). For tests: `near-workspaces` 0.24.0, `tokio`, `anyhow`, `serde_json`. For types: TypeScript 7.0.2. The site's display font is Baloo 2 (SIL OFL 1.1), self-hosted through `@fontsource-variable/baloo-2` 5.3.0. Share cards render with `@vercel/og` 1.0.1 (MPL-2.0).
 
 ## License
 

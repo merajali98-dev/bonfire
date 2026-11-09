@@ -17,6 +17,10 @@ The browser generates a key and sends only the public key to `api/guest.ts`, whi
 
 To enable it, run `npm run testnet -- guests` from the repository root. That creates the parent account and writes `apps/web/.env.local`.
 
+## Share cards
+
+`api/card.ts` renders a 1200×630 PNG for a mission, a round result or a personal receipt. Every figure is read from the contract at request time and the URL carries only IDs, so a card can't claim anything the chain doesn't show. A receipt with no on-chain record falls back to the account's Ash, or to the plain mission card. The links people share are `/s/m/<round>/<mission>`, `/s/r/<round>` and `/s/p/<round>/<mission>/<account>`. Posting is always the person's own action: the site only opens a draft on X.
+
 ## Hosting on Vercel
 
 The site is at https://bonfire-opal.vercel.app. To release from a checkout, run `vercel deploy --prod` from the repository root; `.vercelignore` limits the upload to the app and its shared packages. `npm run testnet -- guests-vercel` stores the guest key and redeploys.
