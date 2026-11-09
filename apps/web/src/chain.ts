@@ -31,10 +31,10 @@ async function query<T>(params: Record<string, unknown>): Promise<T> {
   throw lastError instanceof Error ? lastError : new Error("The network did not answer.");
 }
 
-export async function view<T>(method: string, args: object = {}): Promise<T> {
+export async function view<T>(method: string, args: object = {}, contract: string = CONTRACT): Promise<T> {
   const result = await query<{ result?: number[] }>({
     request_type: "call_function",
-    account_id: CONTRACT,
+    account_id: contract,
     method_name: method,
     args_base64: btoa(JSON.stringify(args)),
   });

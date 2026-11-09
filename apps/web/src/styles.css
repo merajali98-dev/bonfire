@@ -1269,3 +1269,41 @@ select {
 .table td:first-child {
   text-align: left;
 }
+
+/* Made: delivered work */
+
+.stickers {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.stickers a {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--track);
+  color: var(--text);
+  text-align: center;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.stickers img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+}
+
+.made .good {
+  color: var(--good);
+}
+
+.status-line {
+  margin: 4px 0 0;
+}

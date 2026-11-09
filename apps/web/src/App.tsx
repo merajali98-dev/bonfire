@@ -6,6 +6,7 @@ import { EmbersPage } from "./Embers";
 import { Hero } from "./Fire";
 import { LabPage } from "./Lab";
 import { LedgerPage } from "./Ledger";
+import { MadePage } from "./Made";
 import { PracticePage } from "./Practice";
 import { countdown, parseEmber, shortAccount, showEmber, showNear } from "./format";
 import { sceneOf } from "./scene";
@@ -114,6 +115,7 @@ export function App() {
         <a href="#/" className={route === "home" ? "on" : ""} aria-current={route === "home" ? "page" : undefined}>The fire</a>
         <a href="#/embers" className={route === "embers" ? "on" : ""} aria-current={route === "embers" ? "page" : undefined}>My embers</a>
         <a href="#/practice" className={route === "practice" ? "on" : ""} aria-current={route === "practice" ? "page" : undefined}>Practice</a>
+        <a href="#/made" className={route === "made" ? "on" : ""} aria-current={route === "made" ? "page" : undefined}>Made</a>
         <a href="#/ledger" className={route === "ledger" ? "on" : ""} aria-current={route === "ledger" ? "page" : undefined}>Ledger</a>
         <a href="#/lab" className={route === "lab" ? "on" : ""} aria-current={route === "lab" ? "page" : undefined}>Steal the fire</a>
         <a href="#/simulator" className={route === "simulator" ? "on" : ""} aria-current={route === "simulator" ? "page" : undefined}>Simulator</a>
@@ -121,6 +123,8 @@ export function App() {
 
       {route === "practice" ? (
         <PracticePage />
+      ) : route === "made" ? (
+        <MadePage />
       ) : route === "ledger" ? (
         <LedgerPage />
       ) : route === "simulator" ? (
@@ -163,7 +167,7 @@ export function App() {
   );
 }
 
-const ROUTES = { "#/embers": "embers", "#/practice": "practice", "#/ledger": "ledger", "#/lab": "lab", "#/simulator": "simulator" } as const;
+const ROUTES = { "#/embers": "embers", "#/practice": "practice", "#/made": "made", "#/ledger": "ledger", "#/lab": "lab", "#/simulator": "simulator" } as const;
 type Route = (typeof ROUTES)[keyof typeof ROUTES] | "home";
 const routeOf = (): Route => ROUTES[window.location.hash as keyof typeof ROUTES] ?? "home";
 
