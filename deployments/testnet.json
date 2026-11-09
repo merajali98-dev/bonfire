@@ -95,6 +95,24 @@
       "signer": "bonfire-meraj-curator.testnet",
       "tx_hash": "4wB1Fdf8mfkTH1JVrhAkRscNTvd4LpvJAQqscm41yhao",
       "at": "2026-11-09T19:11:47.365Z"
+    },
+    {
+      "action": "commit",
+      "signer": "bonfire-meraj-backer1.testnet",
+      "tx_hash": "7bm4Y4cFkEJ2bCygxDP3yf4yTzkHkn2JhKJ94J1kR6Ad",
+      "at": "2026-11-09T19:14:15.143Z"
+    },
+    {
+      "action": "commit",
+      "signer": "bonfire-meraj-backer2.testnet",
+      "tx_hash": "7dGvVT4dmUSuCya8De7b78AtSHssmznTCkVhKToV3ZXF",
+      "at": "2026-11-09T19:14:20.372Z"
+    },
+    {
+      "action": "select",
+      "signer": "bonfire-meraj-dist.testnet",
+      "tx_hash": "FxsHbTPR3sAUKo5GdfoeMvDVPiDzCTBwQRNiwp1yhCVR",
+      "at": "2026-11-09T22:14:36.428Z"
     }
   ]
 }
