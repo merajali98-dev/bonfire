@@ -1,8 +1,8 @@
 {
-  "source_commit": "4c025d24a87989f6a962a2d05d436df678e374ed",
-  "sha256": "0d9626054c7e4a192a913a5ad18a4cbabb2b09c7344ecc9ab6808914e297562d",
-  "code_hash": "v36M6kheiKVtvsFfBaPbKuNtQj1idaN1CruEAoF3vPE",
-  "bytes": 320028,
+  "source_commit": "c23b8ec0924a747b393108626a874cbe62ba57b3",
+  "sha256": "e85ea4dd5416b4601f492555bcce735b26c4dc4377a301ee164114323b29bf7d",
+  "code_hash": "Ge5Hnw33MAsyNzZdd6fKXLxDcMkkK4peoyRzL7juGGeg",
+  "bytes": 326253,
   "image": "sourcescan/cargo-near:0.22.0-rust-1.99.1",
   "image_digest": "sha256:c9655eaf7436b90c87ea8b25739f91063032c5c30ba24cfeafe72c142943b5bb",
   "command": "cargo near build reproducible-wasm"
