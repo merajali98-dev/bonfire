@@ -8,8 +8,8 @@ class ContractError extends Error {}
 
 const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
-/** Retries rate limits and network failures. A contract error is an answer, so it is not retried. */
-export async function view<T>(method: string, args: object = {}): Promise<T> {
+/** One RPC query. Retries rate limits and network failures; an RPC or contract error is an answer, so it is not retried. */
+async function query<T>(params: Record<string, unknown>): Promise<T> {
   let lastError: unknown;
   for (let attempt = 0; attempt < 5; attempt++) {
     if (attempt > 0) await sleep(500 * 2 ** attempt);
@@ -17,31 +17,48 @@ export async function view<T>(method: string, args: object = {}): Promise<T> {
       const response = await fetch(RPC_URL, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: "bonfire",
-          method: "query",
-          params: {
-            request_type: "call_function",
-            finality: "optimistic",
-            account_id: CONTRACT,
-            method_name: method,
-            args_base64: btoa(JSON.stringify(args)),
-          },
-        }),
+        body: JSON.stringify({ jsonrpc: "2.0", id: "bonfire", method: "query", params: { finality: "optimistic", ...params } }),
       });
       if (response.status === 429 || response.status >= 500) throw new Error(`RPC returned ${response.status}`);
-      const body = (await response.json()) as { result?: { result?: number[]; error?: string }; error?: { message?: string } };
-      if (body.error || body.result?.error || !body.result?.result) {
-        throw new ContractError(body.result?.error ?? body.error?.message ?? `View ${method} failed`);
-      }
-      return JSON.parse(new TextDecoder().decode(new Uint8Array(body.result.result))) as T;
+      const body = (await response.json()) as { result?: T & { error?: string }; error?: { message?: string } };
+      if (body.error || !body.result || body.result.error) throw new ContractError(body.result?.error ?? body.error?.message ?? "RPC query failed");
+      return body.result;
     } catch (error) {
       if (error instanceof ContractError) throw error;
       lastError = error;
     }
   }
   throw lastError instanceof Error ? lastError : new Error("The network did not answer.");
+}
+
+export async function view<T>(method: string, args: object = {}): Promise<T> {
+  const result = await query<{ result?: number[] }>({
+    request_type: "call_function",
+    account_id: CONTRACT,
+    method_name: method,
+    args_base64: btoa(JSON.stringify(args)),
+  });
+  if (!result.result) throw new ContractError(`View ${method} failed`);
+  return JSON.parse(new TextDecoder().decode(new Uint8Array(result.result))) as T;
+}
+
+/** The contract account itself: its code hash and how many access keys can sign for it. */
+export async function loadAccountFacts(): Promise<{ codeHash: string; accessKeys: number }> {
+  const [account, keys] = await Promise.all([
+    query<{ code_hash: string }>({ request_type: "view_account", account_id: CONTRACT }),
+    query<{ keys: unknown[] }>({ request_type: "view_access_key_list", account_id: CONTRACT }),
+  ]);
+  return { codeHash: account.code_hash, accessKeys: keys.keys.length };
+}
+
+/** Pages through a view that takes from_index and limit until a short page comes back. */
+export async function viewAll<T>(method: string, pageSize = 50): Promise<T[]> {
+  const all: T[] = [];
+  for (;;) {
+    const page = await view<T[]>(method, { from_index: all.length, limit: pageSize });
+    all.push(...page);
+    if (page.length < pageSize) return all;
+  }
 }
 
 export const ACTIVE_PHASES = ["Scheduled", "Backing", "Candle", "AwaitingSelection"];

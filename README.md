@@ -15,7 +15,7 @@ Built at NEAR HACKATHON (Memecoins With Mechanics; Social Money). Work in progre
 | `scripts/testnet.ts` — deploy, seed, run and settle rounds from the CLI ([runbook](scripts/README.md)) | Used for the development deployment on testnet |
 | `packages/simulator` — seeded 60-day scenarios, backer strategies and rule sweeps ([report](docs/simulation.md)) | Implemented; rule math shared with the contract through fixtures, and one seeded run replayed against the wasm in CI |
 | Development deployment — `bonfire-meraj-contract.testnet` (has an access key; every account is a team-run demo actor) | One labeled demo round accepted on testnet: 15,000 EMBER burned, 0.75 test NEAR paid |
-| `apps/web` — live round, guest account or wallet sign-in, faucet, commit, My embers with settle, share cards rendered from chain data, and a local Practice floor ([site](https://bonfire-opal.vercel.app), [setup](apps/web/README.md)) | In progress; signed commits confirmed on testnet from a guest on a phone and from a wallet |
+| `apps/web` — live round, guest account or wallet sign-in, faucet, commit, My embers with settle, share cards rendered from chain data, a local Practice floor, and a Ledger page with the proof checks, supply, burn log and Hearth ([site](https://bonfire-opal.vercel.app), [setup](apps/web/README.md)) | In progress; signed commits confirmed on testnet from a guest on a phone and from a wallet |
 | `res/bonfire.wasm` — the deployable build, made reproducibly in CI | Committed with its SHA-256 and source commit; provisional until the contract freezes |
 | Final keyless deployment | Not started |
 
