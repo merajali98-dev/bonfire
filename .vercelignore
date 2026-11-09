@@ -3,6 +3,8 @@
 !/apps
 !/packages
 !/docs
+# The Ledger shows res/build.json, the reproducible build it compares against.
+!/res
 !/package.json
 !/package-lock.json
 **/node_modules
