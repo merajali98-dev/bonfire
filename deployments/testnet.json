@@ -113,6 +113,84 @@
       "signer": "bonfire-meraj-dist.testnet",
       "tx_hash": "FxsHbTPR3sAUKo5GdfoeMvDVPiDzCTBwQRNiwp1yhCVR",
       "at": "2026-11-09T22:14:36.428Z"
+    },
+    {
+      "action": "submit",
+      "signer": "bonfire-meraj-maker1.testnet",
+      "tx_hash": "GjtZLVUG4uqAWaP9J2nbvWzJhimqEaiHaCEJcPbrr89j",
+      "at": "2026-11-09T22:21:52.114Z"
+    },
+    {
+      "action": "accept",
+      "signer": "bonfire-meraj-curator.testnet",
+      "tx_hash": "BRrZt9szaHchtCKXwfQQ2ZnD1dDVWJctDT6dpmCxByv9",
+      "at": "2026-11-09T22:22:57.728Z"
+    },
+    {
+      "action": "claim_payout",
+      "signer": "bonfire-meraj-dist.testnet",
+      "tx_hash": "BhCQATyL9RaxCndEbcAJNjqPQJvL91aypdDQPL1RpEBu",
+      "at": "2026-11-09T22:23:03.798Z"
+    },
+    {
+      "action": "settle",
+      "signer": "bonfire-meraj-dist.testnet",
+      "tx_hash": "43piyYBijvi7z8jNaz6VeXHeS42dcDApo6bS3NhLDbox",
+      "at": "2026-11-09T22:23:10.715Z"
+    },
+    {
+      "action": "settle",
+      "signer": "bonfire-meraj-dist.testnet",
+      "tx_hash": "HBb2jQX3MZgd6Fi8rtotUtHEwcBREydv68YZExa9VjTr",
+      "at": "2026-11-09T22:23:15.557Z"
+    },
+    {
+      "action": "settle",
+      "signer": "bonfire-meraj-dist.testnet",
+      "tx_hash": "FyHk5kQvvxqhtu3hDuWFLDrJUVk9KJQvrWSkhebkHpm8",
+      "at": "2026-11-09T22:23:20.451Z"
+    },
+    {
+      "action": "nominate",
+      "signer": "bonfire-meraj-curator.testnet",
+      "tx_hash": "Cwsdjpxve1VKtemqZ69YbNScoAWUxJSNcQn3YiSkfPJ5",
+      "at": "2026-11-09T22:24:07.530Z"
+    },
+    {
+      "action": "consent",
+      "signer": "bonfire-meraj-maker2.testnet",
+      "tx_hash": "8E7pwCR4h5eY5eE1MJY7hAuqX7fG2GZywBs7QbjpkUfX",
+      "at": "2026-11-09T22:24:12.350Z"
+    },
+    {
+      "action": "nominate",
+      "signer": "bonfire-meraj-curator.testnet",
+      "tx_hash": "FKENk5V4ymtZtnxngyr5WzSP8FgirKuZ52SPpUDE8v47",
+      "at": "2026-11-09T22:24:16.493Z"
+    },
+    {
+      "action": "consent",
+      "signer": "bonfire-meraj-maker3.testnet",
+      "tx_hash": "GG6Uq29waYS6kSomJVb5EXn7aJ6nPcrz2iJfXH9oJQDw",
+      "at": "2026-11-09T22:24:20.790Z"
+    },
+    {
+      "action": "nominate",
+      "signer": "bonfire-meraj-curator.testnet",
+      "tx_hash": "2pfKPDLthfpAdfmecQ1Fg89QtFNwNB3E7LRDPaxgdERX",
+      "at": "2026-11-09T22:24:25.032Z"
+    },
+    {
+      "action": "consent",
+      "signer": "bonfire-meraj-maker1.testnet",
+      "tx_hash": "DrKGNvSsPDGT7qFSf3HexekQ1czBi5LK69syqFj7o9tT",
+      "at": "2026-11-09T22:24:29.630Z"
+    },
+    {
+      "action": "create_round",
+      "signer": "bonfire-meraj-curator.testnet",
+      "tx_hash": "9MaKiKoSP1HmKnRYY7kbkp41HhY1VxSSCtKgfYkbFvrC",
+      "at": "2026-11-09T22:24:33.920Z"
     }
   ]
 }

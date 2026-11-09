@@ -73,32 +73,39 @@ function DeliveryCard({ delivery }: { delivery: Delivery }) {
         {standing.kind === "in-review" && <>Submitted and waiting for review. Nothing burns until the reviewer accepts this exact file.</>}
         {standing.kind === "other" && <>Round status: {standing.phase}.</>}
       </p>
-      <ul className="stickers">
-        {delivery.pieces.map((piece) => (
-          <li key={piece.file}>
-            <a href={piece.file} download>
-              <img src={piece.file} alt={`EMBER mascot sticker: ${piece.title}`} width={512} height={512} loading="lazy" />
-              <span>{piece.title}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-      <p className="hint">Free for anyone to use, copy, share and adapt. Tap a sticker to save it as a 512 px WebP.</p>
+      {delivery.video && (
+        <video className="delivered-video" controls preload="none" playsInline poster={delivery.video.poster} src={delivery.download}>
+          <a href={delivery.download}>Download the video</a>
+        </video>
+      )}
+      {delivery.pieces.length > 0 && (
+        <ul className="stickers">
+          {delivery.pieces.map((piece) => (
+            <li key={piece.file}>
+              <a href={piece.file} download>
+                <img src={piece.file} alt={`EMBER mascot sticker: ${piece.title}`} width={512} height={512} loading="lazy" />
+                <span>{piece.title}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+      {delivery.usage && <p className="hint">{delivery.usage}</p>}
       <div className="share-actions">
-        <a className="action" href={delivery.download} download>Download the submitted zip</a>
+        <a className="action" href={delivery.download} download>Download the submitted {delivery.fileLabel}</a>
         <button type="button" onClick={() => void verify()} disabled={check === "busy"}>
           {check === "busy" ? "Hashing…" : "Check it against the chain"}
         </button>
       </div>
-      {check === "match" && <p className="good">The zip's SHA-256 equals the hash submitted on-chain.</p>}
+      {check === "match" && <p className="good">The {delivery.fileLabel}'s SHA-256 equals the hash submitted on-chain.</p>}
       {check === "differs" && <p className="warn">The download doesn't match the hash submitted on-chain.</p>}
-      {check === "failed" && <p className="warn">Couldn't download the zip to check it. Try again.</p>}
+      {check === "failed" && <p className="warn">Couldn't download the {delivery.fileLabel} to check it. Try again.</p>}
       <dl className="facts wide">
         <div><dt>Contract</dt><dd className="mono">{delivery.contract}</dd></div>
         <div><dt>Creator</dt><dd className="mono">{delivery.maker}<span className="tag">team demo actor</span></dd></div>
         <div><dt>Submitted SHA-256</dt><dd className="mono">{delivery.hash}</dd></div>
       </dl>
-      <p className="hint">Made with OpenAI ImageGen from the site's mascot. The note inside the zip names the tools and lists the prompts.</p>
+      <p className="hint">{delivery.tools}</p>
     </section>
   );
 }

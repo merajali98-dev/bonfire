@@ -39,3 +39,14 @@ sha256sum deliveries/round-2/bonfire-demo.mp4
 ```
 
 The result must equal the `submission.hash` of round 0 on `fire.bonfire-hearth.testnet`.
+
+## Outcome
+
+| Step | Transaction |
+| --- | --- |
+| Submit by `bonfire-meraj-maker1.testnet` | `GjtZLVUG4uqAWaP9J2nbvWzJhimqEaiHaCEJcPbrr89j` |
+| Accept by the curator, for this exact hash; 12,350 EMBER burned | `BRrZt9szaHchtCKXwfQQ2ZnD1dDVWJctDT6dpmCxByv9` |
+| Creator payout, 0.6175 test NEAR | `BhCQATyL9RaxCndEbcAJNjqPQJvL91aypdDQPL1RpEBu` |
+| Settle the three backers | `43piyYBijvi7z8jNaz6VeXHeS42dcDApo6bS3NhLDbox`, `HBb2jQX3MZgd6Fi8rtotUtHEwcBREydv68YZExa9VjTr`, `FyHk5kQvvxqhtu3hDuWFLDrJUVk9KJQvrWSkhebkHpm8` |
+
+The video was accepted after it was committed to the repository. Its opening line, that 12,350 EMBER burned to make it, became true with that acceptance.

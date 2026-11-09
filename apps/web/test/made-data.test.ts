@@ -5,7 +5,8 @@ import { test } from "node:test";
 import type { Round, RoundPhase, RoundView } from "@bonfire/protocol";
 import { DELIVERIES, sha256OfBytes, standingOf } from "../src/made-data.ts";
 
-const stickers = DELIVERIES[0];
+const stickers = DELIVERIES.find((d) => d.fileLabel === "zip")!;
+const video = DELIVERIES.find((d) => d.fileLabel === "video")!;
 
 function round(phase: RoundPhase, hash: string | null, overrides: Partial<Round> = {}): RoundView {
   return {
@@ -22,6 +23,14 @@ test("the recorded hash is the hash of the zip in the repository", () => {
   const bytes = readFileSync(new URL(`../../../${stickers.repoPath}/ember-sticker-pack.zip`, import.meta.url));
   assert.equal(createHash("sha256").update(bytes).digest("hex"), stickers.hash);
   assert.equal(stickers.download, `/${stickers.repoPath}/ember-sticker-pack.zip`);
+});
+
+test("the demo video's recorded hash is the hash of the committed file, and its poster exists", () => {
+  const bytes = readFileSync(new URL(`../../../${video.repoPath}/bonfire-demo.mp4`, import.meta.url));
+  assert.equal(createHash("sha256").update(bytes).digest("hex"), video.hash);
+  assert.equal(video.download, `/${video.repoPath}/bonfire-demo.mp4`);
+  readFileSync(new URL(`../public${video.video!.poster}`, import.meta.url));
+  assert.equal(video.contract, "fire.bonfire-hearth.testnet");
 });
 
 test("every sticker on the site exists", () => {

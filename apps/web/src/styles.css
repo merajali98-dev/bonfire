@@ -1307,3 +1307,12 @@ select {
 .status-line {
   margin: 4px 0 0;
 }
+
+.delivered-video {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  border-radius: 12px;
+  background: #000;
+  aspect-ratio: 16 / 9;
+}

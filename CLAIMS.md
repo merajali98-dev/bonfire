@@ -51,6 +51,7 @@ A claim marked **pending** depends on something not done yet and must not be mad
 | The development deployment has an access key and older code. | `npm run observe -- --deployment dev` | `FAILED` on code hash and access keys; 2 of 5 held |
 | One labeled demo round was accepted on testnet: 15,000 EMBER burned, 0.75 test NEAR paid. | `npm run testnet -- status`; site Ledger, burn log | Round 0 `Accepted`, `burned 15,000 EMBER`, `Paid` |
 | The EMBER sticker pack was commissioned, delivered after backing closed, and accepted by its exact hash: 15,000 EMBER burned, 0.7615 test NEAR paid to the creator. | `npm run testnet -- status 2`; `sha256sum deliveries/round-1/ember-sticker-pack.zip`; site Made page | Round 2 `Accepted`, `burned 15,000 EMBER`, `Paid`; `submission.hash` = `e47961602280ed503bc2cf617f6e9e97f48f726a94b6d0df0c7c3e4bd87c74b7` |
+| The final deployment's first round commissioned the demo video. It was made after backing closed and accepted by its exact hash: 12,350 EMBER burned, 0.6175 test NEAR paid to the creator, every backer settled. | `npm run testnet -- status 0 --deployment keyless`; `sha256sum deliveries/round-2/bonfire-demo.mp4`; site Made page | Round 0 `Accepted`, `burned 12,350 EMBER`, `Paid`, escrow 0; `submission.hash` = `c24cf5af5eb91ab5780797747a39f311f8ddd0f6ae8e1211c9c05541d5d555b0` |
 
 ## Site
 

@@ -17,10 +17,29 @@ export interface Delivery {
   download: string;
   repoPath: string;
   maker: string;
+  /** What the delivered file is, as the page names it. */
+  fileLabel: "zip" | "video";
+  /** Images from the delivery shown on the page, or a video with its poster frame. */
   pieces: Piece[];
+  video?: { poster: string };
+  tools: string;
+  usage?: string;
 }
 
 export const DELIVERIES: Delivery[] = [
+  {
+    contract: "fire.bonfire-hearth.testnet",
+    roundId: 0,
+    mission: "The hackathon demo video",
+    hash: "c24cf5af5eb91ab5780797747a39f311f8ddd0f6ae8e1211c9c05541d5d555b0",
+    download: "/deliveries/round-2/bonfire-demo.mp4",
+    repoPath: "deliveries/round-2",
+    maker: "bonfire-meraj-maker1.testnet",
+    fileLabel: "video",
+    pieces: [],
+    video: { poster: "/video/bonfire-demo-poster.jpg" },
+    tools: "Recorded from this site on a phone-sized screen and edited by Claude Code, narrated with Gemini TTS, with music from Lyria. Every transaction it shows is real, with its hash on screen.",
+  },
   {
     contract: "bonfire-meraj-contract.testnet",
     roundId: 2,
@@ -29,6 +48,9 @@ export const DELIVERIES: Delivery[] = [
     download: "/deliveries/round-1/ember-sticker-pack.zip",
     repoPath: "deliveries/round-1",
     maker: "bonfire-meraj-maker1.testnet",
+    fileLabel: "zip",
+    tools: "Made with OpenAI ImageGen from the site's mascot. The note inside the zip names the tools and lists the prompts.",
+    usage: "Free for anyone to use, copy, share and adapt. Tap a sticker to save it as a 512 px WebP.",
     pieces: [
       { file: "/stickers/01-stoke-the-fire.webp", title: "Stoke the fire" },
       { file: "/stickers/02-roast-a-marshmallow.webp", title: "Roast a marshmallow" },

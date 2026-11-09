@@ -4,7 +4,9 @@
 
 Put your EMBER behind the mission you want made. If it wins and the work is accepted, your EMBER burns and the creator gets paid. Otherwise you get it back.
 
-Built at NEAR HACKATHON (Memecoins With Mechanics; Social Money). Work in progress, testnet only.
+Built at NEAR HACKATHON (Memecoins With Mechanics; Social Money). Testnet only.
+
+**Demo video:** [deliveries/round-2/bonfire-demo.mp4](deliveries/round-2/bonfire-demo.mp4) (2:57). BONFIRE commissioned it: it won Round 2 on the final contract and was accepted by its exact hash, burning 12,350 EMBER. It also plays on the site's Made page.
 
 ## Try it in five minutes
 
@@ -27,7 +29,7 @@ Automated reviewers: start with [AGENTS.md](AGENTS.md). Every claim and its proo
 | Development deployment — `bonfire-meraj-contract.testnet` (has an access key; every account is a team-run demo actor) | Two rounds accepted on testnet: a labeled demo round (15,000 EMBER burned, 0.75 test NEAR paid) and the EMBER sticker pack, commissioned and delivered after backing closed (15,000 EMBER burned, 0.7615 test NEAR paid; [delivery](deliveries/round-1)). All backers were team accounts |
 | `apps/web` — live round, guest account or wallet sign-in, faucet, commit, My embers with settle, share cards rendered from chain data, a local Practice floor, a Made page showing delivered work checked against its on-chain hash, a Ledger page with the proof checks, supply, burn log and Hearth, and a "Try to steal the fire" page where visitors send forbidden transactions from their own account and see the real refusal, and a Simulator page charting the 60-day scenarios ([site](https://bonfire-opal.vercel.app), [setup](apps/web/README.md)) | Live, reading the final keyless deployment since 9 Nov; signed commits confirmed on testnet from a guest on a phone and from a wallet. The Made page reads the sticker round from the development deployment |
 | `res/bonfire.wasm` — the deployable build, made reproducibly in CI | Committed with its SHA-256 and source commit; this is the frozen contract running on the final deployment |
-| Final keyless deployment — `fire.bonfire-hearth.testnet` | Live on testnet since 9 Nov: created, funded, deployed with `res/bonfire.wasm` and initialized in [one transaction](https://testnet.nearblocks.io/txns/GNnnst1azSGwCVDxtMc12wLZR6GADyQ2JUhTziJqJjnA) with no AddKey, so it has never had an access key. `npm run observe` holds 5 of 5. Its first round opened on 9 Nov, with the demo video, a judge guide page and the Fire Keepers leaderboard as missions |
+| Final keyless deployment — `fire.bonfire-hearth.testnet` | Live on testnet since 9 Nov: created, funded, deployed with `res/bonfire.wasm` and initialized in [one transaction](https://testnet.nearblocks.io/txns/GNnnst1azSGwCVDxtMc12wLZR6GADyQ2JUhTziJqJjnA) with no AddKey, so it has never had an access key. `npm run observe` holds 5 of 5. Its first round (Round 2) ran on 9 Nov: the demo video won with 12,350 EMBER counted, was made after backing closed, and was accepted by its exact hash. 12,350 EMBER burned and 0.6175 test NEAR went to the creator ([delivery](deliveries/round-2)). Backers were team accounts and one guest created for the recording. Round 3 is open until 13 Nov 22:26 UTC |
 
 Claims in this README are limited to what the repository currently contains.
 
@@ -121,6 +123,7 @@ The ×1.05 / ×0.85 pair scored 0.825 in the controller sweep against 0.854 for 
 - **Assistance tools:** this project was built with AI coding assistants, Claude Code (Anthropic) and Codex (OpenAI), under human direction. All code was reviewed and tested by the team.
 - **Artwork:** the mascot, fire, candle, ash, flame mark and share image in `apps/web/public` were generated with ChatGPT (OpenAI) under human direction.
 - **Commissioned work:** the six Round 2 stickers in `deliveries/round-1/` were generated with OpenAI ImageGen by the team creator account, using the site's idle mascot as the reference. The note inside the zip lists the prompts. They are free for anyone to use.
+- **Demo video:** `deliveries/round-2/bonfire-demo.mp4` was recorded from the live site and edited by Claude Code (Anthropic), narrated with Gemini TTS (Google, voice Kore), with music from Lyria (Google). Its [note](deliveries/round-2/README.md) lists every tool and every transaction it shows.
 - **Dependencies:** `near-sdk` 5.30.1 and `near-contract-standards` 5.30.1 (MIT/Apache-2.0). For tests: `near-workspaces` 0.24.0, `tokio`, `anyhow`, `serde_json`. For types: TypeScript 7.0.2. The site's display font is Baloo 2 (SIL OFL 1.1), self-hosted through `@fontsource-variable/baloo-2` 5.3.0. Share cards render with `@vercel/og` 1.0.1 (MPL-2.0).
 
 ## Other hackathon submissions

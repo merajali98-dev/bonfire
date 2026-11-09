@@ -66,6 +66,12 @@ const MISSION_SETS: Record<string, MissionSpec[]> = {
     { title: "Judge guide page", brief: "docs/briefs/round-2/judge-guide.md", maker: "maker2" },
     { title: "Fire Keepers leaderboard", brief: "docs/briefs/round-1/fire-keepers.md", maker: "maker3" },
   ],
+  // Round 3 runs on the keyless deployment through judging week. Missions that lost Round 2 return.
+  "round-3": [
+    { title: "Judge guide page", brief: "docs/briefs/round-2/judge-guide.md", maker: "maker2" },
+    { title: "Fire Keepers leaderboard", brief: "docs/briefs/round-1/fire-keepers.md", maker: "maker3" },
+    { title: "15-second mascot animation", brief: "docs/briefs/round-1/mascot-animation.md", maker: "maker1" },
+  ],
   demo: [
     { title: "[demo] Delivery A", brief: "docs/briefs/demo.md", maker: "maker1" },
     { title: "[demo] Delivery B", brief: "docs/briefs/demo.md", maker: "maker2" },
