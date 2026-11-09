@@ -126,7 +126,9 @@ jobs:
 
       - name: Rebuild res/ from its source commit
         run: |
-          if node scripts/res.ts compare "$RUNNER_TEMP/bonfire-wasm/bonfire.wasm"; then exit 0; fi
+          # This commit's own build names this commit, so it matches res/ only when res/ was built here.
+          if node scripts/res.ts compare "$RUNNER_TEMP/bonfire-wasm/bonfire.wasm" 2>/dev/null; then exit 0; fi
+          echo "res/ was built from an earlier commit; rebuilding that commit to compare."
           commit=$(node -p "require('./res/build.json').source_commit")
           git worktree add --detach "$RUNNER_TEMP/at-source" "$commit"
           (cd "$RUNNER_TEMP/at-source/contracts/bonfire" && cargo near build reproducible-wasm)
