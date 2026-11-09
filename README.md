@@ -59,6 +59,15 @@ cargo test --test sandbox -- --nocapture --test-threads=1
 
 Measured at the worst case (5 missions, 12 checkpoints, 64-character account IDs): `settle` burns 7.1 TGas, `commit` 4.0 TGas, `select` 2.6 TGas, and the payout callback 2.2 TGas of its 10 TGas allowance. The largest commitment record uses 540 bytes; its 0.01 NEAR deposit covers 1,000.
 
+## Check a deployment without a key
+
+```sh
+npm run observe                        # the keyless final deployment (deployments/testnet.json)
+npm run observe -- --deployment dev    # the development deployment
+```
+
+`observe` needs only Node 24 and public RPC. It checks that the deployed code hash equals `res/bonfire.wasm`, that the contract account has no access keys, that one transaction created, funded, deployed and initialized it with no AddKey, that the rules match the simulation, and that `audit()` reconciles. Each claim prints `HELD`, `FAILED` or `UNAVAILABLE` with what it observed, and anything but all `HELD` exits non-zero. The keyless deployment doesn't exist yet, so today it prints `UNAVAILABLE`. On the development deployment, 2 of 5 claims hold: it has an access key and older code.
+
 ## How a round's terms are set
 
 The contract computes every round's money terms from rules fixed at initialization. The `create_round` call refuses any budget, threshold or target passed to it.

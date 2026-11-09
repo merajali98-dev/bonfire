@@ -11,7 +11,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present && tsc -p scripts",
     "test": "npm test --workspaces --if-present",
     "simulate": "npm run report -w @bonfire/simulator",
-    "testnet": "node --disable-warning=ExperimentalWarning scripts/testnet.ts"
+    "testnet": "node --disable-warning=ExperimentalWarning scripts/testnet.ts",
+    "observe": "node --disable-warning=ExperimentalWarning scripts/observe.ts"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
