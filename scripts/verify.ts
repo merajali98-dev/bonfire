@@ -63,7 +63,11 @@ if (process.platform === "win32") {
   claim(null, "The sandbox suite passes on res/bonfire.wasm", "the sandbox node has no Windows build; run this on Linux or macOS, or see CI");
 } else {
   const sandbox = run("cargo", ["test", "--test", "sandbox", "--", "--nocapture", "--test-threads=1"], CONTRACT, { BONFIRE_WASM: join(ROOT, "res", "bonfire.wasm") });
-  const ok = (name: string) => new RegExp(`test ${name} \\.\\.\\. ok`).test(sandbox.out);
+  // With --nocapture a test's own output can sit between "test <name> ..." and its "ok", so a
+  // test passed if it ran and libtest's failure list doesn't name it.
+  const failures = new Set([...sandbox.out.matchAll(/^---- ([a-z0-9_]+) stdout ----$/gm)].map((m) => m[1]));
+  const summary = sandbox.out.match(/test result: (ok|FAILED)\. \d+ passed; \d+ failed/)?.[0] ?? "no test result";
+  const ok = (name: string) => sandbox.out.includes(`test ${name} ...`) && !failures.has(name) && /test result: (ok|FAILED)/.test(sandbox.out);
   const rows: [string, string][] = [
     ["private_callbacks_reject_outside_callers", "Private callbacks refuse outside callers on wasm"],
     ["payout_transfer_pays_creator_exactly_once", "An accepted payout reaches the creator exactly once"],
@@ -76,8 +80,10 @@ if (process.platform === "win32") {
   ];
   for (const [name, text] of rows) {
     const metric = name === "simulator_replay_matches_wasm" ? sandbox.out.match(/METRIC replay: outcomes: (.*)/)?.[1] : undefined;
-    claim(ok(name), text, ok(name) ? `test ${name} ... ok${metric ? `; outcomes ${metric}` : ""}` : "not ok or not run");
+    claim(ok(name), text, ok(name) ? `test ${name} passed${metric ? `; outcomes ${metric}` : ""}` : failures.has(name) ? `test ${name} failed` : "not run");
   }
+  console.log(`  sandbox: ${summary}`);
+  for (const line of sandbox.out.match(/^.*METRIC .*$/gm) ?? []) console.log(line.slice(line.indexOf("METRIC ")));
   if (!sandbox.ok) console.log(lastLines(sandbox.out, 30));
 }
 
