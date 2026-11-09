@@ -50,6 +50,7 @@ A claim marked **pending** depends on something not done yet and must not be mad
 | The final contract `fire.bonfire-hearth.testnet` has never had an access key and runs `res/bonfire.wasm`. | `npm run observe`; [the deploy transaction](https://testnet.nearblocks.io/txns/GNnnst1azSGwCVDxtMc12wLZR6GADyQ2JUhTziJqJjnA) | `5 of 5 held`: code hash `Ge5Hnw33MAsyNzZdd6fKXLxDcMkkK4peoyRzL7juGGeg`, 0 access keys, CreateAccount, Transfer, DeployContract, FunctionCall `new` |
 | The development deployment has an access key and older code. | `npm run observe -- --deployment dev` | `FAILED` on code hash and access keys; 2 of 5 held |
 | One labeled demo round was accepted on testnet: 15,000 EMBER burned, 0.75 test NEAR paid. | `npm run testnet -- status`; site Ledger, burn log | Round 0 `Accepted`, `burned 15,000 EMBER`, `Paid` |
+| The EMBER sticker pack was commissioned, delivered after backing closed, and accepted by its exact hash: 15,000 EMBER burned, 0.7615 test NEAR paid to the creator. | `npm run testnet -- status 2`; `sha256sum deliveries/round-1/ember-sticker-pack.zip`; site Made page | Round 2 `Accepted`, `burned 15,000 EMBER`, `Paid`; `submission.hash` = `e47961602280ed503bc2cf617f6e9e97f48f726a94b6d0df0c7c3e4bd87c74b7` |
 
 ## Site
 

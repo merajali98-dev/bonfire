@@ -101,6 +101,11 @@ const dryRun = opts["dry-run"];
 if (opts.deployment !== "dev" && opts.deployment !== "keyless") throw new Error("--deployment is dev or keyless.");
 /** deployments/testnet.json is the keyless final deployment; testnet-dev.json the development one. */
 const MANIFEST_PATH = opts.deployment === "keyless" || positionals[0] === "keyless" ? join(ROOT, "deployments", "testnet.json") : DEV_MANIFEST_PATH;
+/**
+ * accept and reject need exactly 1 yocto on the reviewed contract. The development deployment runs
+ * older code whose accept and reject refuse any deposit.
+ */
+const REVIEW_DEPOSIT = opts.deployment === "keyless" ? 1n : 0n;
 
 // ------------------------------------------------------------------ helpers
 
@@ -664,13 +669,13 @@ async function cmdAccept(): Promise<void> {
   const round = await getRound(roundId);
   const hash = round.round.submission?.hash;
   if (!hash) throw new Error("Nothing has been submitted for this round.");
-  await call(opts.as ? who(opts.as) : round.round.reviewer, "accept", { round_id: roundId, hash }, 1n);
+  await call(opts.as ? who(opts.as) : round.round.reviewer, "accept", { round_id: roundId, hash }, REVIEW_DEPOSIT);
 }
 
 async function cmdReject(): Promise<void> {
   const roundId = roundArg(1);
   const round = await getRound(roundId);
-  await call(opts.as ? who(opts.as) : round.round.reviewer, "reject", { round_id: roundId }, 1n);
+  await call(opts.as ? who(opts.as) : round.round.reviewer, "reject", { round_id: roundId }, REVIEW_DEPOSIT);
 }
 
 /** select, expire and claim_payout can be sent by anyone. */
@@ -738,7 +743,7 @@ async function cmdDemo(): Promise<void> {
   await call(m.accounts.dist, "select", { round_id: roundId });
   await submitWork(roundId, join(ROOT, "docs/briefs/demo.md"), REPO_BLOB + "docs/briefs/demo.md");
   const round = await getRound(roundId);
-  await call(round.round.reviewer, "accept", { round_id: roundId, hash: round.round.submission?.hash ?? "" }, 1n);
+  await call(round.round.reviewer, "accept", { round_id: roundId, hash: round.round.submission?.hash ?? "" }, REVIEW_DEPOSIT);
   await call(m.accounts.dist, "claim_payout", { round_id: roundId });
   await sleep(4_000);
   for (const account of [m.accounts.backer1, m.accounts.backer2]) {

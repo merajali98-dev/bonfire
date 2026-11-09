@@ -13,3 +13,18 @@ sha256sum deliveries/round-1/ember-sticker-pack.zip
 ```
 
 The result must equal the `submission.hash` of round 2 on `bonfire-meraj-contract.testnet`.
+
+## On-chain record
+
+All on `bonfire-meraj-contract.testnet`, signed by labeled team accounts:
+
+| Step | Transaction |
+| --- | --- |
+| Draw (checkpoint 5; the sticker pack won with 15,000 EMBER counted) | `6sjWttpp65eS3Qhv7mxL7NqfLUbHWdM9JiSM8Kc56rFT` |
+| Submit by `bonfire-meraj-maker1.testnet` | `CC1nxXcXeY9tFSr89AUWTFepGMF6Z6P9hkdsqZj1pdUo` |
+| Accept by the curator, for this exact hash | `8fQpmgMcN8SW6FLsRfYLAtpyEsmtmvnV8G8NiH2iDNKe` |
+| Creator payout, 0.7615 test NEAR | `4bgeKk9y3rHTqy9pG1d8jvDscSJs3oiF5g9FRy47VL5f` |
+| Settle `bonfire-meraj-backer1.testnet` | `AXyupFdti3aFvTiKXntqUjQdDR83PrGyKpjTmMkYNpvf` |
+| Settle `bonfire-meraj-backer2.testnet` | `43NLhNDXBR5Sjn6LvvzZJmq6d5bn5Etivhdmb2QwdU5k` |
+
+Acceptance burned the 15,000 counted EMBER and recorded it as Ash for the two backers.

@@ -305,6 +305,54 @@
       "signer": "bonfire-meraj-curator.testnet",
       "tx_hash": "F6e7DSEVecpPhrz8dbMyvXR9Tb3ZsfNKrGok3MznyDZC",
       "at": "2026-11-09T05:41:26.401Z"
+    },
+    {
+      "action": "commit",
+      "signer": "bonfire-meraj-backer1.testnet",
+      "tx_hash": "9DQ2LV1cejTDuNTQtPrqYEn31fzMmh6hzb5bYhVRnsvq",
+      "at": "2026-11-09T10:46:16.787Z"
+    },
+    {
+      "action": "commit",
+      "signer": "bonfire-meraj-backer2.testnet",
+      "tx_hash": "8QLUB65Zwhpaydx19LfqXUsRjipzLM7dhDmH9TZ6dK5s",
+      "at": "2026-11-09T10:47:16.968Z"
+    },
+    {
+      "action": "select",
+      "signer": "bonfire-meraj-dist.testnet",
+      "tx_hash": "6sjWttpp65eS3Qhv7mxL7NqfLUbHWdM9JiSM8Kc56rFT",
+      "at": "2026-11-09T17:45:21.921Z"
+    },
+    {
+      "action": "submit",
+      "signer": "bonfire-meraj-maker1.testnet",
+      "tx_hash": "CC1nxXcXeY9tFSr89AUWTFepGMF6Z6P9hkdsqZj1pdUo",
+      "at": "2026-11-09T18:18:28.034Z"
+    },
+    {
+      "action": "accept",
+      "signer": "bonfire-meraj-curator.testnet",
+      "tx_hash": "8fQpmgMcN8SW6FLsRfYLAtpyEsmtmvnV8G8NiH2iDNKe",
+      "at": "2026-11-09T19:05:14.422Z"
+    },
+    {
+      "action": "claim_payout",
+      "signer": "bonfire-meraj-dist.testnet",
+      "tx_hash": "4bgeKk9y3rHTqy9pG1d8jvDscSJs3oiF5g9FRy47VL5f",
+      "at": "2026-11-09T19:05:21.055Z"
+    },
+    {
+      "action": "settle",
+      "signer": "bonfire-meraj-dist.testnet",
+      "tx_hash": "AXyupFdti3aFvTiKXntqUjQdDR83PrGyKpjTmMkYNpvf",
+      "at": "2026-11-09T19:05:27.781Z"
+    },
+    {
+      "action": "settle",
+      "signer": "bonfire-meraj-dist.testnet",
+      "tx_hash": "43NLhNDXBR5Sjn6LvvzZJmq6d5bn5Etivhdmb2QwdU5k",
+      "at": "2026-11-09T19:05:33.293Z"
     }
   ]
 }
