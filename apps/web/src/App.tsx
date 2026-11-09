@@ -10,6 +10,7 @@ import { PracticePage } from "./Practice";
 import { countdown, parseEmber, shortAccount, showEmber, showNear } from "./format";
 import { sceneOf } from "./scene";
 import { Share } from "./Share";
+import { SimulatorPage } from "./Simulator";
 import { connectWallet, createGuest, explain, restoreGuest, restoreWallet, type Session } from "./session";
 
 type Notice = { tone: "busy" | "good" | "bad"; text: string; hash?: string | null };
@@ -115,12 +116,15 @@ export function App() {
         <a href="#/practice" className={route === "practice" ? "on" : ""} aria-current={route === "practice" ? "page" : undefined}>Practice</a>
         <a href="#/ledger" className={route === "ledger" ? "on" : ""} aria-current={route === "ledger" ? "page" : undefined}>Ledger</a>
         <a href="#/lab" className={route === "lab" ? "on" : ""} aria-current={route === "lab" ? "page" : undefined}>Steal the fire</a>
+        <a href="#/simulator" className={route === "simulator" ? "on" : ""} aria-current={route === "simulator" ? "page" : undefined}>Simulator</a>
       </nav>
 
       {route === "practice" ? (
         <PracticePage />
       ) : route === "ledger" ? (
         <LedgerPage />
+      ) : route === "simulator" ? (
+        <SimulatorPage />
       ) : route === "lab" ? (
         <LabPage session={session} round={snapshot?.round ?? null} />
       ) : route === "embers" ? (
@@ -159,7 +163,7 @@ export function App() {
   );
 }
 
-const ROUTES = { "#/embers": "embers", "#/practice": "practice", "#/ledger": "ledger", "#/lab": "lab" } as const;
+const ROUTES = { "#/embers": "embers", "#/practice": "practice", "#/ledger": "ledger", "#/lab": "lab", "#/simulator": "simulator" } as const;
 type Route = (typeof ROUTES)[keyof typeof ROUTES] | "home";
 const routeOf = (): Route => ROUTES[window.location.hash as keyof typeof ROUTES] ?? "home";
 
