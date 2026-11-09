@@ -2,6 +2,14 @@
 
 BONFIRE is a NEAR memecoin whose holders commission work by burning EMBER, only once the work is accepted. This file says how to check its claims. [CLAIMS.md](CLAIMS.md) lists every claim with the test, command or view that proves it.
 
+## One command (Linux or macOS, Rust, Node 24)
+
+```sh
+npm ci && npm run verify
+```
+
+It checks that `res/` is the current reproducible build, runs the Node checks, the contract's unit tests and attack battery, and the sandbox suite on `res/bonfire.wasm`. Each claim prints `HELD <n> <claim>` with an `observed:` line only after its step passed, and the run exits non-zero otherwise. The sandbox suite takes about 15 minutes. CI runs it on every push.
+
 ## Fast checks (Node 24 only, about a minute)
 
 ```sh

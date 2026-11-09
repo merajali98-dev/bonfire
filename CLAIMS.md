@@ -1,6 +1,6 @@
 # Claims
 
-Every claim BONFIRE makes in the README, on the site or in posts, with what proves it. Unit tests run with `cd contracts/bonfire && cargo test --lib`. Sandbox tests run on Linux with `cargo test --test sandbox -- --test-threads=1`, and in [CI](.github/workflows/contract.yml) on every push. Simulator and web checks run with `npm test`.
+Every claim BONFIRE makes in the README, on the site or in posts, with what proves it. Unit tests run with `cd contracts/bonfire && cargo test --lib`. Sandbox tests run on Linux with `cargo test --test sandbox -- --test-threads=1`, and in [CI](.github/workflows/contract.yml) on every push. Simulator and web checks run with `npm test`. `npm run verify` runs all of them on the committed `res/bonfire.wasm` and prints `HELD` per claim.
 
 A claim marked **pending** depends on something not done yet and must not be made publicly until its status changes.
 

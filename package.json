@@ -12,7 +12,8 @@
     "test": "npm test --workspaces --if-present",
     "simulate": "npm run report -w @bonfire/simulator",
     "testnet": "node --disable-warning=ExperimentalWarning scripts/testnet.ts",
-    "observe": "node --disable-warning=ExperimentalWarning scripts/observe.ts"
+    "observe": "node --disable-warning=ExperimentalWarning scripts/observe.ts",
+    "verify": "node --disable-warning=ExperimentalWarning scripts/verify.ts"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

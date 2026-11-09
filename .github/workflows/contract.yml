@@ -31,7 +31,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The simulator replay test runs packages/simulator with Node, which has no npm dependencies.
+      # npm run verify and the simulator replay run with Node.
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -56,27 +56,29 @@ jobs:
           key: contract-${{ runner.os }}-${{ hashFiles('contracts/bonfire/Cargo.lock') }}
           restore-keys: contract-${{ runner.os }}-
 
-      - name: Unit tests
-        run: cargo test --lib
+      - name: Install Node dependencies
+        working-directory: .
+        run: npm ci
 
-      # The committed reproducible build when it is current; otherwise a fresh development build.
-      - name: Pick the wasm
+      # npm run verify from a fresh checkout, on the committed res/bonfire.wasm. If res/ is
+      # stale, the tests still run on a development build of this commit, and the job fails.
+      - name: Verify
+        working-directory: .
         run: |
-          if (cd ../.. && node scripts/res.ts check); then
-            echo "BONFIRE_WASM=$GITHUB_WORKSPACE/res/bonfire.wasm" >> "$GITHUB_ENV"
-            echo "Sandbox tests ran on the committed res/bonfire.wasm." >> "$GITHUB_STEP_SUMMARY"
+          if node scripts/res.ts check; then
+            npm run verify 2>&1 | tee sandbox-output.txt
           else
-            cargo near build non-reproducible-wasm --no-abi
-            echo "res/ is stale, so sandbox tests ran on a non-reproducible build of this commit." >> "$GITHUB_STEP_SUMMARY"
+            echo "res/ is stale, so tests ran on a non-reproducible build and the job fails." >> "$GITHUB_STEP_SUMMARY"
+            (cd contracts/bonfire && cargo test --lib && cargo near build non-reproducible-wasm --no-abi && cargo test --test sandbox -- --nocapture --test-threads=1) 2>&1 | tee sandbox-output.txt
+            exit 1
           fi
 
-      - name: Sandbox tests
-        run: |
-          cargo test --test sandbox -- --nocapture --test-threads=1 2>&1 | tee sandbox-output.txt
-
-      - name: Publish measurements
+      - name: Publish results
         if: always()
+        working-directory: .
         run: |
+          echo '### Verify' >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^(HELD|FAILED|UNAVAILABLE) ' sandbox-output.txt | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY" || true
           echo '### Sandbox measurements' >> "$GITHUB_STEP_SUMMARY"
           grep -o 'METRIC .*' sandbox-output.txt | sed 's/^METRIC /- /' >> "$GITHUB_STEP_SUMMARY" || true
 
