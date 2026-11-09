@@ -165,7 +165,38 @@ function topShare(values: bigint[], count: number): number {
 
 const maxOf = (values: bigint[]) => values.reduce((best, v) => (v > best ? v : best), 0n);
 
-export function runScenario(cfg: Scenario, seed: number): RunResult {
+/** One commitment as the replay sends it to the contract. Wallets are numbered in group order. */
+export interface PlacedCommit {
+  wallet: number;
+  mission: number;
+  amount: bigint;
+  /** null is before the candle. */
+  checkpoint: number | null;
+}
+
+/** Everything a round did, and the state after its commitments were settled. */
+export interface RoundEvent {
+  day: number;
+  /** NEAR stoked into the Hearth since the previous round, before this one opened. */
+  stoke: bigint;
+  /** True when the budget was below `minBudget`, so no round opened. */
+  skipped: boolean;
+  budget: bigint;
+  record: RoundRecord | null;
+  /** The matched payout at selection, whether or not the work was later accepted. */
+  matched: bigint;
+  commits: PlacedCommit[];
+  after: { supply: bigint; burned: bigint; hearth: bigint; threshold: bigint; free: bigint[]; ash: bigint[] };
+}
+
+export interface RunOptions {
+  /** Candle draws to use instead of the seeded ones, by round index. The seeded draw is still
+   * consumed, so the rest of the run keeps the same random stream. Used to follow a chain. */
+  draws?: readonly number[];
+  onRound?: (event: RoundEvent) => void;
+}
+
+export function runScenario(cfg: Scenario, seed: number, options: RunOptions = {}): RunResult {
   const rng = new Rng(seed);
   const wallets: Wallet[] = [];
   cfg.groups.forEach((group, index) => {
@@ -202,10 +233,20 @@ export function runScenario(cfg: Scenario, seed: number): RunResult {
 
   const size = (amount: bigint) => (cfg.coarse > 0n ? (amount / cfg.coarse) * cfg.coarse : amount);
 
-  function playRound(day: number): void {
+  const snapshot = () => ({
+    supply,
+    burned,
+    hearth,
+    threshold,
+    free: wallets.map((w) => w.free),
+    ash: wallets.map((w) => w.ash),
+  });
+
+  function playRound(day: number, stoke: bigint): void {
     const budget = roundBudget(hearth, cfg.rules.budgetBps);
     if (budget < cfg.rules.minBudget) {
       skipped++;
+      options.onRound?.({ day, stoke, skipped: true, budget, record: null, matched: 0n, commits: [], after: snapshot() });
       return;
     }
     hearth -= budget;
@@ -261,7 +302,7 @@ export function runScenario(cfg: Scenario, seed: number): RunResult {
       if (maxOf(live) > live[mission]!) place(w, mission, gap, n - 1);
     }
 
-    const k = cfg.closeMode === "hard" ? n - 1 : rng.int(n);
+    const k = cfg.closeMode === "hard" ? n - 1 : forcedDraw(rng.int(n), n);
     const isCounted = (c: Commit) => c.checkpoint === null || c.checkpoint <= k;
     const tally = (list: Iterable<Commit>) => {
       const sums = Array.from({ length: cfg.missions }, () => 0n);
@@ -324,14 +365,28 @@ export function runScenario(cfg: Scenario, seed: number): RunResult {
       }
     }
     for (const strategy of wonBy) totals.get(strategy)!.roundsWon++;
-    rounds.push({ day, budget, threshold: roundThreshold, target, checkpoint: k, outcome, winner, counted, payout: outcome === "accepted" ? payout : 0n });
+    const record: RoundRecord = { day, budget, threshold: roundThreshold, target, checkpoint: k, outcome, winner, counted, payout: outcome === "accepted" ? payout : 0n };
+    rounds.push(record);
+    if (options.onRound) {
+      const placed = commits.map((c) => ({ wallet: wallets.indexOf(c.wallet), mission: c.mission, amount: c.amount, checkpoint: c.checkpoint }));
+      options.onRound({ day, stoke, skipped: false, budget, record, matched: payout, commits: placed, after: snapshot() });
+    }
+  }
+
+  let stokeSinceRound = 0n;
+
+  function forcedDraw(seeded: number, n: number): number {
+    const forced = options.draws?.[rounds.length];
+    if (forced === undefined) return seeded;
+    if (!Number.isInteger(forced) || forced < 0 || forced >= n) throw new Error(`draw ${forced} is outside 0..${n - 1}`);
+    return forced;
   }
 
   for (let day = 0; day < cfg.days; day++) {
-    if (day < cfg.stokeUntilDay) {
-      hearth += cfg.stokePerDay;
-      stoked += cfg.stokePerDay;
-    }
+    const stoke = day < cfg.stokeUntilDay ? cfg.stokePerDay : 0n;
+    hearth += stoke;
+    stoked += stoke;
+    stokeSinceRound += stoke;
     for (const w of wallets) {
       const chance = w.strategy === "farmer" ? 1 : w.strategy === "casual" || w.strategy === "early" || w.strategy === "candle" ? cfg.faucetClaim : 0;
       if (chance > 0 && faucet >= cfg.faucetAmount && rng.next() < chance) {
@@ -340,7 +395,10 @@ export function runScenario(cfg: Scenario, seed: number): RunResult {
       }
     }
     if (faucet < cfg.faucetAmount && faucetEmptyDay === null) faucetEmptyDay = day;
-    if (day % cfg.roundEveryDays === 0) playRound(day);
+    if (day % cfg.roundEveryDays === 0) {
+      playRound(day, stokeSinceRound);
+      stokeSinceRound = 0n;
+    }
     series.push({ day, supply, burned, hearth, threshold });
   }
 

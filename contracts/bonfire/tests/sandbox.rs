@@ -6,6 +6,7 @@
 //! Build the wasm first (`cargo near build non-reproducible-wasm --no-abi`), then run
 //! `cargo test --test sandbox -- --nocapture --test-threads=1`. Lines starting with
 //! METRIC are the measurements. The sandbox binary only exists for Linux and macOS.
+//! `simulator_replay_matches_wasm` also needs Node 24 to run packages/simulator.
 #![cfg(not(windows))]
 
 use anyhow::{bail, Result};
@@ -69,6 +70,19 @@ struct Fx {
 
 impl Fx {
     async fn new() -> Result<Self> {
+        Self::with_rules(json!({
+            "budget_bps": 2_500,
+            "min_budget": NEAR.to_string(),
+            "initial_threshold": (1_000 * EMBER).to_string(),
+            "min_threshold": (100 * EMBER).to_string(),
+            "up_bps": 11_000,
+            "down_bps": 7_000,
+            "target_multiple": 40,
+        }))
+        .await
+    }
+
+    async fn with_rules(rules: Value) -> Result<Self> {
         let worker = near_workspaces::sandbox().await?;
         let root = worker.root_account()?;
         let host = root.create_subaccount("bonfire").initial_balance(NearToken::from_near(30)).transact().await?.unwrap();
@@ -86,15 +100,7 @@ impl Fx {
                 "faucet_amount": (1_000 * EMBER).to_string(),
                 "faucet_interval_ms": FAUCET_INTERVAL_MS,
                 "nominate_min_ash": (1_000 * EMBER).to_string(),
-                "rules": {
-                    "budget_bps": 2_500,
-                    "min_budget": NEAR.to_string(),
-                    "initial_threshold": (1_000 * EMBER).to_string(),
-                    "min_threshold": (100 * EMBER).to_string(),
-                    "up_bps": 11_000,
-                    "down_bps": 7_000,
-                    "target_multiple": 40,
-                },
+                "rules": rules,
             }))
             .max_gas()
             .transact()
@@ -560,5 +566,235 @@ async fn worst_case_round_gas_and_storage() -> Result<()> {
     assert_eq!(u(&audit["deposits_held"]), 0);
     assert_reconciled(&audit);
     metric("operating_surplus after run (yoctoNEAR)", u(&audit["operating_surplus"]));
+    Ok(())
+}
+
+// ------------------------------------------------------------ simulator replay
+
+const REPLAY_PRE_MS: u64 = 300_000;
+const REPLAY_WINDOW_MS: u64 = 120_000;
+
+/// Asks packages/simulator/src/replay.ts for the seeded run, following the draws the
+/// contract has made so far. Needs Node 24 on the PATH.
+fn replay_plan(draws: &[u64]) -> Result<Value> {
+    let repo = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
+    let list = draws.iter().map(u64::to_string).collect::<Vec<_>>().join(",");
+    let out = std::process::Command::new("node")
+        .args(["--disable-warning=ExperimentalWarning", "packages/simulator/src/replay.ts", &list])
+        .current_dir(repo)
+        .output()
+        .map_err(|e| anyhow::anyhow!("cannot run node for the simulator replay: {e}"))?;
+    if !out.status.success() {
+        bail!("replay.ts failed: {}", String::from_utf8_lossy(&out.stderr));
+    }
+    Ok(serde_json::from_slice(&out.stdout)?)
+}
+
+fn n64(value: &Value) -> u64 {
+    value.as_str().unwrap_or_else(|| panic!("not a numeric string: {value}")).parse().unwrap()
+}
+
+/// Compares every wallet and the contract totals with the simulator's state after a round.
+async fn assert_replay_state(fx: &Fx, wallets: &[Account], after: &Value, paid: u128, label: &str) -> Result<()> {
+    for (i, wallet) in wallets.iter().enumerate() {
+        assert_eq!(fx.ft_balance(wallet.id()).await?, u(&after["free"][i]), "{label}: wallet {i} EMBER");
+        let ash = u(&fx.view("get_ash", json!({ "account_id": wallet.id() })).await?);
+        assert_eq!(ash, u(&after["ash"][i]), "{label}: wallet {i} Ash");
+    }
+    let audit = fx.audit().await?;
+    assert_eq!(u(&audit["total_supply"]), u(&after["supply"]), "{label}: supply");
+    assert_eq!(u(&audit["total_burned"]), u(&after["burned"]), "{label}: burned");
+    assert_eq!(u(&audit["hearth_pool"]), u(&after["hearth"]), "{label}: Hearth");
+    assert_eq!(u(&audit["next_threshold"]), u(&after["threshold"]), "{label}: next threshold");
+    assert_eq!(u(&audit["total_paid"]), paid, "{label}: paid");
+    assert_eq!(u(&audit["escrow_total"]), 0, "{label}: escrow");
+    assert_eq!(u(&audit["reserved_total"]), 0, "{label}: reserved");
+    assert_eq!(u(&audit["claims_available"]), 0, "{label}: claims");
+    assert_reconciled(&audit);
+    Ok(())
+}
+
+/// One seeded simulator run, replayed round by round on the wasm. The contract draws each
+/// candle checkpoint itself; the simulator is told that draw and must then predict the
+/// selection, payout, burn, refunds, Ash, Hearth and next threshold exactly.
+#[tokio::test]
+async fn simulator_replay_matches_wasm() -> Result<()> {
+    let mut draws: Vec<u64> = Vec::new();
+    let plan = replay_plan(&draws)?;
+    let r = &plan["rules"];
+    let rules = json!({
+        "budget_bps": n64(&r["budgetBps"]),
+        "min_budget": r["minBudget"],
+        "initial_threshold": r["initialThreshold"],
+        "min_threshold": r["minThreshold"],
+        "up_bps": n64(&r["upBps"]),
+        "down_bps": n64(&r["downBps"]),
+        "target_multiple": n64(&r["targetMultiple"]),
+    });
+    println!("REPLAY seed {} with rules {rules}", plan["seed"]);
+    let fx = Fx::with_rules(rules).await?;
+    let checkpoints = plan["checkpoints"].as_u64().unwrap();
+    let missions = plan["missions"].as_u64().unwrap() as usize;
+
+    let mut wallets = Vec::new();
+    for (i, wealth) in plan["wealth"].as_array().unwrap().iter().enumerate() {
+        let wallet = fx.account(&format!("w{i}"), 5).await?;
+        fx.fund(&wallet, u(wealth)).await?;
+        wallets.push(wallet);
+    }
+    let mut creators = Vec::new();
+    for i in 0..missions {
+        creators.push(fx.account(&format!("maker{i}"), 5).await?);
+    }
+    let creator_refs: Vec<&Account> = creators.iter().collect();
+    fx.ok(&fx.dist, "stoke", json!({}), u(&plan["initialHearth"])).await?;
+
+    let total = plan["rounds"].as_array().unwrap().len();
+    let mut paid = 0u128;
+    let mut outcomes: Vec<String> = Vec::new();
+    for index in 0..total {
+        let label = format!("day {index}");
+        let ahead = replay_plan(&draws)?;
+        let ev = &ahead["rounds"][index];
+        let stoke = u(&ev["stoke"]);
+        if stoke > 0 {
+            fx.ok(&fx.dist, "stoke", json!({}), stoke).await?;
+        }
+        let terms = fx.view("get_next_round_terms", json!({})).await?;
+        assert_eq!(u(&terms["budget"]), u(&ev["budget"]), "{label}: computed budget");
+
+        let ids = fx.nominate_all(&creator_refs).await?;
+        let open = fx.now_ms().await? + 10_000;
+        let candle = open + REPLAY_PRE_MS;
+        let close = candle + REPLAY_WINDOW_MS * checkpoints;
+        let delivery = close + REPLAY_WINDOW_MS;
+        let review = delivery + REPLAY_WINDOW_MS;
+        let args = json!({ "args": {
+            "nomination_ids": ids, "reviewer": fx.reviewer.id(),
+            "open_at_ms": open, "candle_start_ms": candle, "backing_close_ms": close,
+            "delivery_deadline_ms": delivery, "review_deadline_ms": review, "checkpoints": checkpoints,
+        }});
+        if ev["skipped"] == true {
+            assert_fails(&fx.call(&fx.curator, "create_round", args, 0).await?, "ERR_HEARTH_TOO_LOW");
+            assert_replay_state(&fx, &wallets, &ev["after"], paid, &label).await?;
+            outcomes.push("skipped".into());
+            println!("REPLAY {label}: skipped, budget below the minimum");
+            continue;
+        }
+        let round_id = fx.ok(&fx.curator, "create_round", args, 0).await?.json::<u32>()?;
+
+        // Pre-candle commitments first, then each checkpoint's additions inside its window.
+        let commits = ev["commits"].as_array().unwrap();
+        let mut pre = vec![0u128; missions];
+        let mut adds = vec![vec![0u128; checkpoints as usize]; missions];
+        let mut records = std::collections::HashSet::new();
+        fx.advance_to(open).await?;
+        for slot in std::iter::once(None).chain((0..checkpoints).map(Some)) {
+            if let Some(c) = slot {
+                fx.advance_to(candle + c * REPLAY_WINDOW_MS + 2_000).await?;
+            }
+            for c in commits.iter().filter(|c| c["checkpoint"].as_u64() == slot) {
+                let wallet = c["wallet"].as_u64().unwrap() as usize;
+                let mission = c["mission"].as_u64().unwrap() as usize;
+                let amount = u(&c["amount"]);
+                let deposit = if records.insert((wallet, mission)) { COMMIT_DEPOSIT } else { 1 };
+                fx.commit(&wallets[wallet], round_id, mission as u8, amount, deposit).await?;
+                match slot {
+                    None => pre[mission] += amount,
+                    Some(cp) => adds[mission][cp as usize] += amount,
+                }
+            }
+        }
+        // Proves each commitment landed in the window the simulator gave it.
+        let view = fx.round(round_id).await?;
+        for (m, mission) in view["round"]["missions"].as_array().unwrap().iter().enumerate() {
+            assert_eq!(u(&mission["pre_total"]), pre[m], "{label}: mission {m} pre-candle tally");
+            for (cp, add) in mission["candle_adds"].as_array().unwrap().iter().enumerate() {
+                assert_eq!(u(add), adds[m][cp], "{label}: mission {m} checkpoint {cp} tally");
+            }
+        }
+
+        fx.advance_to(close).await?;
+        fx.ok(&fx.dist, "select", json!({ "round_id": round_id }), 0).await?;
+        let selected = fx.round(round_id).await?["round"].clone();
+        let k = selected["drawn_checkpoint"].as_u64().unwrap();
+        draws.push(k);
+
+        let told = replay_plan(&draws)?;
+        let ev = &told["rounds"][index];
+        assert_eq!(ev["commits"], ahead["rounds"][index]["commits"], "{label}: the draw changed the plan");
+        let rec = &ev["record"];
+        assert_eq!(rec["checkpoint"].as_u64(), Some(k), "{label}: draw");
+        assert_eq!(u(&selected["budget"]), u(&rec["budget"]), "{label}: budget");
+        assert_eq!(u(&selected["threshold"]), u(&rec["threshold"]), "{label}: threshold");
+        assert_eq!(u(&selected["target"]), u(&rec["target"]), "{label}: target");
+
+        let outcome = rec["outcome"].as_str().unwrap().to_string();
+        let final_status = if outcome == "below" || outcome == "tie" {
+            assert_eq!(selected["status"], "FailedSelection", "{label}: {outcome}");
+            assert!(selected["winner"].is_null(), "{label}: no winner expected");
+            "FailedSelection"
+        } else {
+            assert_eq!(selected["status"], "AwaitingWork", "{label}: {outcome}");
+            assert_eq!(selected["winner"], rec["winner"], "{label}: winner");
+            assert_eq!(u(&selected["counted"]), u(&rec["counted"]), "{label}: counted");
+            assert_eq!(u(&selected["payout"]), u(&ev["matched"]), "{label}: matched payout");
+            let creator = &creators[rec["winner"].as_u64().unwrap() as usize];
+            let submit = json!({ "round_id": round_id, "hash": WORK_HASH, "uri": "https://example.test/work" });
+            let id = json!({ "round_id": round_id });
+            match outcome.as_str() {
+                "accepted" => {
+                    fx.ok(creator, "submit", submit, 0).await?;
+                    fx.ok(&fx.reviewer, "accept", json!({ "round_id": round_id, "hash": WORK_HASH }), 0).await?;
+                    fx.ok(&fx.dist, "claim_payout", id, 0).await?;
+                    fx.settle_receipts().await?;
+                    paid += u(&rec["payout"]);
+                    "Accepted"
+                }
+                "rejected" => {
+                    fx.ok(creator, "submit", submit, 0).await?;
+                    fx.ok(&fx.reviewer, "reject", id, 0).await?;
+                    "Rejected"
+                }
+                "missed" => {
+                    fx.advance_to(delivery).await?;
+                    fx.ok(&fx.dist, "expire", id, 0).await?;
+                    "ExpiredWork"
+                }
+                "absent" => {
+                    fx.ok(creator, "submit", submit, 0).await?;
+                    fx.advance_to(review).await?;
+                    fx.ok(&fx.dist, "expire", id, 0).await?;
+                    "ExpiredReview"
+                }
+                other => bail!("{label}: unknown outcome {other}"),
+            }
+        };
+        let round = fx.round(round_id).await?["round"].clone();
+        assert_eq!(round["status"], final_status, "{label}: final status");
+        if final_status == "Accepted" {
+            assert_eq!(round["payout_state"], "Paid", "{label}: payout state");
+        }
+
+        let mut settled = std::collections::HashSet::new();
+        for c in commits {
+            let wallet = c["wallet"].as_u64().unwrap() as usize;
+            if settled.insert(wallet) {
+                fx.ok(&fx.dist, "settle", json!({ "round_id": round_id, "account_id": wallets[wallet].id() }), 0).await?;
+            }
+        }
+        assert_replay_state(&fx, &wallets, &ev["after"], paid, &label).await?;
+        println!(
+            "REPLAY {label}: draw k={k}, {outcome}, {} commitments, counted {} EMBER, next threshold {} EMBER: matched",
+            commits.len(),
+            u(&rec["counted"]) / EMBER,
+            u(&ev["after"]["threshold"]) / EMBER,
+        );
+        outcomes.push(outcome);
+    }
+
+    metric("replay: rounds matched", outcomes.len());
+    metric("replay: outcomes", outcomes.join(", "));
+    metric("replay: draws", format!("{draws:?}"));
     Ok(())
 }
