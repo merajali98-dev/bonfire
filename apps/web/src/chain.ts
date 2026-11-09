@@ -1,6 +1,6 @@
 import type { Audit, CommitmentView, Config, NextRoundTerms, RoundView, U128 } from "@bonfire/protocol";
 
-export const CONTRACT = import.meta.env.VITE_CONTRACT ?? "bonfire-meraj-contract.testnet";
+export const CONTRACT = import.meta.env.VITE_CONTRACT ?? "fire.bonfire-hearth.testnet";
 export const RPC_URL = import.meta.env.VITE_RPC ?? "https://rpc.testnet.fastnear.com";
 export const EXPLORER_TX = "https://testnet.nearblocks.io/txns/";
 

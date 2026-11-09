@@ -5,6 +5,8 @@
 !/docs
 # The Ledger shows res/build.json, the reproducible build it compares against.
 !/res
+# Delivered work, served at /deliveries/ and checked against its on-chain hash.
+!/deliveries
 !/package.json
 !/package-lock.json
 **/node_modules

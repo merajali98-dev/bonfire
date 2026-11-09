@@ -8,7 +8,7 @@ import { briefKey, parseBrief, sha256Hex } from "../src/brief-text.ts";
 const REPO = "https://github.com/merajali98-dev/bonfire/blob/main/";
 const ROOT = join(import.meta.dirname, "../../..");
 
-test("only this repository's brief files are treated as local", () => {
+test("only brief files on a repository's main branch are treated as local", () => {
   assert.equal(briefKey(`${REPO}docs/briefs/round-1/sticker-pack.md`), "docs/briefs/round-1/sticker-pack.md");
   assert.equal(briefKey(`${REPO}docs/briefs/demo.md`), "docs/briefs/demo.md");
   for (const uri of ["https://example.test/docs/briefs/demo.md", `${REPO}README.md`, `${REPO}docs/briefs/../../README.md`, `${REPO}docs/briefs/a.txt`, "javascript:alert(1)", ""]) {

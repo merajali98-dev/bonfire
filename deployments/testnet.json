@@ -89,6 +89,12 @@
       "signer": "bonfire-meraj-maker3.testnet",
       "tx_hash": "E5bbZjCak4MFBbXehdQRRjdUf6LWknmTnLX8Hra3VCRR",
       "at": "2026-11-09T14:00:20.709Z"
+    },
+    {
+      "action": "create_round",
+      "signer": "bonfire-meraj-curator.testnet",
+      "tx_hash": "4wB1Fdf8mfkTH1JVrhAkRscNTvd4LpvJAQqscm41yhao",
+      "at": "2026-11-09T19:11:47.365Z"
     }
   ]
 }

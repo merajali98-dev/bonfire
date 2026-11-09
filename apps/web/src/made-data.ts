@@ -13,8 +13,8 @@ export interface Delivery {
   mission: string;
   /** SHA-256 of the delivered file, as committed in the repository. */
   hash: string;
-  /** Where the delivered file can be downloaded, pinned to the commit that added it. */
-  uri: string;
+  /** The delivered file as the site serves it. The build copies it from `deliveries/`. */
+  download: string;
   repoPath: string;
   maker: string;
   pieces: Piece[];
@@ -26,7 +26,7 @@ export const DELIVERIES: Delivery[] = [
     roundId: 2,
     mission: "EMBER sticker pack",
     hash: "e47961602280ed503bc2cf617f6e9e97f48f726a94b6d0df0c7c3e4bd87c74b7",
-    uri: "https://raw.githubusercontent.com/merajali98-dev/bonfire/4765bed22f20e7f22fe14376156623a7630d1dca/deliveries/round-1/ember-sticker-pack.zip",
+    download: "/deliveries/round-1/ember-sticker-pack.zip",
     repoPath: "deliveries/round-1",
     maker: "bonfire-meraj-maker1.testnet",
     pieces: [

@@ -9,7 +9,7 @@
 import { readFile } from "node:fs/promises";
 import type { CommitmentView, RoundView } from "@bonfire/protocol";
 
-const CONTRACT = process.env.VITE_CONTRACT ?? "bonfire-meraj-contract.testnet";
+const CONTRACT = process.env.VITE_CONTRACT ?? "fire.bonfire-hearth.testnet";
 const RPC_URL = process.env.BONFIRE_RPC ?? process.env.VITE_RPC ?? "https://rpc.testnet.fastnear.com";
 const FOOTER = "NEAR testnet. Test tokens have no value.";
 const BACKDROP = "#211110";

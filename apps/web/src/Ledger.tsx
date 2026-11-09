@@ -5,8 +5,6 @@ import { CONTRACT, loadAccountFacts, view, viewAll } from "./chain";
 import { showEmber, showNear } from "./format";
 import { burnedInLog, burnLog, labelOf } from "./ledger-data";
 
-const REPO = "https://github.com/merajali98-dev/bonfire";
-
 interface LedgerData {
   audit: Audit;
   config: Config;
@@ -77,9 +75,9 @@ export function LedgerPage() {
           <div><dt>Contract</dt><dd className="mono">{CONTRACT}</dd></div>
           <div><dt>Code hash</dt><dd className="mono">{codeHash}</dd></div>
           <div><dt>Reproducible build</dt><dd className="mono">{build.code_hash}</dd></div>
-          <div><dt>Built from</dt><dd className="mono"><a href={`${REPO}/tree/${build.source_commit}`} target="_blank" rel="noreferrer">{build.source_commit.slice(0, 7)}</a></dd></div>
+          <div><dt>Built from</dt><dd className="mono">{build.source_commit.slice(0, 7)}</dd></div>
         </dl>
-        <p className="hint">Check it yourself without a key: <code>npm run observe</code> in the <a href={REPO} target="_blank" rel="noreferrer">repository</a>.</p>
+        <p className="hint">Anyone with the source can check this without a key: <code>npm run observe</code>.</p>
       </section>
 
       <section className="card">
@@ -153,7 +151,7 @@ export function LedgerPage() {
           <div><dt>Target</dt><dd>{rules.target_multiple}× <small>the threshold</small></dd></div>
           <div><dt>Threshold floor</dt><dd>{showEmber(rules.min_threshold)}</dd></div>
         </dl>
-        <p className="hint">The values come from the <a href={`${REPO}/blob/main/docs/simulation.md`} target="_blank" rel="noreferrer">simulation report</a>.</p>
+        <p className="hint">The values come from the 60-day simulation on the <a href="#/simulator">Simulator</a> page.</p>
       </section>
     </div>
   );

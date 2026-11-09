@@ -25,9 +25,9 @@ Automated reviewers: start with [AGENTS.md](AGENTS.md). Every claim and its proo
 | `scripts/testnet.ts` — deploy, seed, run and settle rounds from the CLI ([runbook](scripts/README.md)) | Used for the development deployment on testnet |
 | `packages/simulator` — seeded 60-day scenarios, backer strategies and rule sweeps ([report](docs/simulation.md)) | Implemented; rule math shared with the contract through fixtures, and one seeded run replayed against the wasm in CI |
 | Development deployment — `bonfire-meraj-contract.testnet` (has an access key; every account is a team-run demo actor) | Two rounds accepted on testnet: a labeled demo round (15,000 EMBER burned, 0.75 test NEAR paid) and the EMBER sticker pack, commissioned and delivered after backing closed (15,000 EMBER burned, 0.7615 test NEAR paid; [delivery](deliveries/round-1)). All backers were team accounts |
-| `apps/web` — live round, guest account or wallet sign-in, faucet, commit, My embers with settle, share cards rendered from chain data, a local Practice floor, a Made page showing delivered work checked against its on-chain hash, a Ledger page with the proof checks, supply, burn log and Hearth, and a "Try to steal the fire" page where visitors send forbidden transactions from their own account and see the real refusal, and a Simulator page charting the 60-day scenarios ([site](https://bonfire-opal.vercel.app), [setup](apps/web/README.md)) | In progress; signed commits confirmed on testnet from a guest on a phone and from a wallet |
-| `res/bonfire.wasm` — the deployable build, made reproducibly in CI | Committed with its SHA-256 and source commit; provisional until the contract freezes |
-| Final keyless deployment — `fire.bonfire-hearth.testnet` | Live on testnet since 9 Nov: created, funded, deployed with `res/bonfire.wasm` and initialized in [one transaction](https://testnet.nearblocks.io/txns/GNnnst1azSGwCVDxtMc12wLZR6GADyQ2JUhTziJqJjnA) with no AddKey, so it has never had an access key. `npm run observe` holds 5 of 5. No rounds have run on it yet |
+| `apps/web` — live round, guest account or wallet sign-in, faucet, commit, My embers with settle, share cards rendered from chain data, a local Practice floor, a Made page showing delivered work checked against its on-chain hash, a Ledger page with the proof checks, supply, burn log and Hearth, and a "Try to steal the fire" page where visitors send forbidden transactions from their own account and see the real refusal, and a Simulator page charting the 60-day scenarios ([site](https://bonfire-opal.vercel.app), [setup](apps/web/README.md)) | Live, reading the final keyless deployment since 9 Nov; signed commits confirmed on testnet from a guest on a phone and from a wallet. The Made page reads the sticker round from the development deployment |
+| `res/bonfire.wasm` — the deployable build, made reproducibly in CI | Committed with its SHA-256 and source commit; this is the frozen contract running on the final deployment |
+| Final keyless deployment — `fire.bonfire-hearth.testnet` | Live on testnet since 9 Nov: created, funded, deployed with `res/bonfire.wasm` and initialized in [one transaction](https://testnet.nearblocks.io/txns/GNnnst1azSGwCVDxtMc12wLZR6GADyQ2JUhTziJqJjnA) with no AddKey, so it has never had an access key. `npm run observe` holds 5 of 5. Its first round opened on 9 Nov, with the demo video, a judge guide page and the Fire Keepers leaderboard as missions |
 
 Claims in this README are limited to what the repository currently contains.
 
@@ -122,6 +122,10 @@ The ×1.05 / ×0.85 pair scored 0.825 in the controller sweep against 0.854 for 
 - **Artwork:** the mascot, fire, candle, ash, flame mark and share image in `apps/web/public` were generated with ChatGPT (OpenAI) under human direction.
 - **Commissioned work:** the six Round 2 stickers in `deliveries/round-1/` were generated with OpenAI ImageGen by the team creator account, using the site's idle mascot as the reference. The note inside the zip lists the prompts. They are free for anyone to use.
 - **Dependencies:** `near-sdk` 5.30.1 and `near-contract-standards` 5.30.1 (MIT/Apache-2.0). For tests: `near-workspaces` 0.24.0, `tokio`, `anyhow`, `serde_json`. For types: TypeScript 7.0.2. The site's display font is Baloo 2 (SIL OFL 1.1), self-hosted through `@fontsource-variable/baloo-2` 5.3.0. Share cards render with `@vercel/og` 1.0.1 (MPL-2.0).
+
+## Other hackathon submissions
+
+The same team also built [Ashes of the Ninth Heaven](https://github.com/merajali98-dev/ashes-of-the-ninth-heaven), a separate project with its own code: a xianxia deckbuilding RPG whose market runs on NEAR.
 
 ## License
 

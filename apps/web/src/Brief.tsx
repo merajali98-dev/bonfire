@@ -31,10 +31,7 @@ export function Brief({ mission }: { mission: Mission }) {
     void sha256Hex(text).then((hash) => setMatches(hash === mission.brief_hash.toLowerCase()));
   }, [open, text, mission.brief_hash]);
 
-  const external = /^https:\/\//.test(mission.brief_uri);
-  if (text === undefined) {
-    return external ? <p className="share"><a href={mission.brief_uri} target="_blank" rel="noreferrer">Read the brief</a></p> : null;
-  }
+  if (text === undefined) return null;
 
   return (
     <details className="share" onToggle={(event) => setOpen(event.currentTarget.open)}>
@@ -48,7 +45,6 @@ export function Brief({ mission }: { mission: Mission }) {
       {open && matches === false && (
         <div className="brief">
           <p className="warn">The copy on this site doesn't match the hash recorded on-chain, so it isn't shown.</p>
-          {external && <p><a href={mission.brief_uri} target="_blank" rel="noreferrer">Open the linked brief</a></p>}
         </div>
       )}
     </details>

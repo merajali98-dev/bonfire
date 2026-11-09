@@ -1,12 +1,14 @@
 /** Reads the mission briefs shipped with the site. Only the small Markdown subset they use. */
 
-const REPO_BLOB = "https://github.com/merajali98-dev/bonfire/blob/main/";
+/** A brief recorded on-chain as a file on the main branch of a repository. */
+const BRIEF_URI = /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/blob\/main\/(docs\/briefs\/[a-z0-9/_-]+\.md)$/;
 
-/** The repository path of a brief, or null if the on-chain link points anywhere else. */
+/**
+ * The path of a brief shipped with the site, or null if the on-chain link points anywhere else.
+ * The site shows a brief only after its text matches the on-chain hash, and never links out.
+ */
 export function briefKey(uri: string): string | null {
-  if (!uri.startsWith(REPO_BLOB)) return null;
-  const path = uri.slice(REPO_BLOB.length);
-  return /^docs\/briefs\/[a-z0-9/_-]+\.md$/.test(path) ? path : null;
+  return BRIEF_URI.exec(uri)?.[1] ?? null;
 }
 
 export async function sha256Hex(text: string): Promise<string> {

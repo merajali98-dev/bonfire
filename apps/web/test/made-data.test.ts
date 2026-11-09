@@ -14,14 +14,14 @@ function round(phase: RoundPhase, hash: string | null, overrides: Partial<Round>
     counted_totals: null,
     current_checkpoint: null,
     now_ms: 0,
-    round: { id: 2, submission: hash ? { hash, uri: stickers.uri, at_ms: 0 } : null, burned: "0", payout: "0", payout_state: "None", ...overrides } as Round,
+    round: { id: 2, submission: hash ? { hash, uri: "https://example.test/pack.zip", at_ms: 0 } : null, burned: "0", payout: "0", payout_state: "None", ...overrides } as Round,
   };
 }
 
 test("the recorded hash is the hash of the zip in the repository", () => {
   const bytes = readFileSync(new URL(`../../../${stickers.repoPath}/ember-sticker-pack.zip`, import.meta.url));
   assert.equal(createHash("sha256").update(bytes).digest("hex"), stickers.hash);
-  assert.ok(stickers.uri.endsWith(`/${stickers.repoPath}/ember-sticker-pack.zip`));
+  assert.equal(stickers.download, `/${stickers.repoPath}/ember-sticker-pack.zip`);
 });
 
 test("every sticker on the site exists", () => {

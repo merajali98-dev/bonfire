@@ -160,7 +160,7 @@ export function App() {
       )}
 
       <footer>
-        <p>Development deployment on testnet. Test NEAR and EMBER have no value, and team accounts are labeled demo actors.</p>
+        <p>Final deployment on NEAR testnet. The contract has no access key. Test NEAR and EMBER have no value, and team accounts are labeled demo actors.</p>
         <p>Contract <code>{CONTRACT}</code></p>
       </footer>
     </div>

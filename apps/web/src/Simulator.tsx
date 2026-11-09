@@ -4,7 +4,6 @@ import series from "../../../packages/simulator/reports/series.json";
 type Point = { day: number; burned: number; supply: number; hearth: number; threshold: number };
 const SCENARIOS = series as unknown as Record<string, Point[]>;
 const NAMES = Object.keys(SCENARIOS);
-const REPORT = "https://github.com/merajali98-dev/bonfire/blob/main/docs/simulation.md";
 
 const MEASURES: { key: keyof Point; title: string; unit: string; note: string }[] = [
   { key: "supply", title: "EMBER supply", unit: "EMBER", note: "Falls only when accepted work burns the counted EMBER." },
@@ -26,7 +25,7 @@ export function SimulatorPage() {
       <section className="card">
         <h2>The simulation behind the rules</h2>
         <p>Sixty simulated days per scenario, a round every three days, averaged over seven seeds. The rule values the contract runs were chosen from these runs: ×1.05 / ×0.85 for the threshold, 25% of the Hearth per round, and a target of four times the threshold.</p>
-        <p className="hint">These are assumption-driven scenarios, not forecasts. The <a href={REPORT} target="_blank" rel="noreferrer">full report</a> has the spread across seeds, the strategy table and the rule sweeps.</p>
+        <p className="hint">These are assumption-driven scenarios, not forecasts. The full report in the source has the spread across seeds, the strategy table and the rule sweeps.</p>
         <label className="field">
           <span>Scenario</span>
           <select value={name} onChange={(e) => setName(e.target.value)}>

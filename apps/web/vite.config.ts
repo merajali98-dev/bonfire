@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 
@@ -50,7 +52,35 @@ function localApi(): Plugin {
   };
 }
 
+const DELIVERIES = join(import.meta.dirname, "../../deliveries");
+const DELIVERED = /\.(zip|mp4)$/;
+
+function deliveredFiles(dir = DELIVERIES): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? deliveredFiles(join(dir, entry.name)) : DELIVERED.test(entry.name) ? [join(dir, entry.name)] : [],
+  );
+}
+
+/** Serves delivered work at /deliveries/..., byte for byte as committed, so the site can check it against the chain. */
+function deliveries(): Plugin {
+  const served = (file: string) => `deliveries/${relative(DELIVERIES, file).split("\\").join("/")}`;
+  return {
+    name: "bonfire-deliveries",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const file = deliveredFiles().find((f) => `/${served(f)}` === req.url);
+        if (!file) return next();
+        res.setHeader("content-type", file.endsWith(".mp4") ? "video/mp4" : "application/zip");
+        res.end(readFileSync(file));
+      });
+    },
+    generateBundle() {
+      for (const file of deliveredFiles()) this.emitFile({ type: "asset", fileName: served(file), source: readFileSync(file) });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   Object.assign(process.env, loadEnv(mode, process.cwd(), "GUEST_"));
-  return { plugins: [react(), localApi()] };
+  return { plugins: [react(), localApi(), deliveries()] };
 });
