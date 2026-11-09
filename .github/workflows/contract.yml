@@ -28,6 +28,8 @@ jobs:
         working-directory: contracts/bonfire
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # The simulator replay test runs packages/simulator with Node, which has no npm dependencies.
       - uses: actions/setup-node@v4
@@ -57,8 +59,16 @@ jobs:
       - name: Unit tests
         run: cargo test --lib
 
-      - name: Build wasm
-        run: cargo near build non-reproducible-wasm --no-abi
+      # The committed reproducible build when it is current; otherwise a fresh development build.
+      - name: Pick the wasm
+        run: |
+          if (cd ../.. && node scripts/res.ts check); then
+            echo "BONFIRE_WASM=$GITHUB_WORKSPACE/res/bonfire.wasm" >> "$GITHUB_ENV"
+            echo "Sandbox tests ran on the committed res/bonfire.wasm." >> "$GITHUB_STEP_SUMMARY"
+          else
+            cargo near build non-reproducible-wasm --no-abi
+            echo "res/ is stale, so sandbox tests ran on a non-reproducible build of this commit." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Sandbox tests
         run: |
@@ -69,3 +79,55 @@ jobs:
         run: |
           echo '### Sandbox measurements' >> "$GITHUB_STEP_SUMMARY"
           grep -o 'METRIC .*' sandbox-output.txt | sed 's/^METRIC /- /' >> "$GITHUB_STEP_SUMMARY" || true
+
+  # Builds the deployable wasm in the pinned image from Cargo.toml and uploads it as the
+  # bonfire-wasm artifact. Then checks that res/ is current and rebuilds it from its source commit.
+  reproducible:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install 1.99.0 --profile minimal
+          rustup default 1.99.0
+
+      - name: Install cargo-near
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.23.0/cargo-near-installer.sh | sh
+
+      - name: Reproducible build of this commit
+        working-directory: contracts/bonfire
+        run: cargo near build reproducible-wasm
+
+      - name: Describe the build
+        run: |
+          mkdir -p "$RUNNER_TEMP/bonfire-wasm"
+          cp contracts/bonfire/target/near/bonfire.wasm "$RUNNER_TEMP/bonfire-wasm/"
+          node scripts/res.ts describe "$RUNNER_TEMP/bonfire-wasm/bonfire.wasm" > "$RUNNER_TEMP/bonfire-wasm/build.json"
+          { echo '### Reproducible build'; echo '```json'; cat "$RUNNER_TEMP/bonfire-wasm/build.json"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bonfire-wasm
+          path: ${{ runner.temp }}/bonfire-wasm/
+
+      - name: res/ matches the contract source
+        run: node scripts/res.ts check
+
+      - name: Rebuild res/ from its source commit
+        run: |
+          if node scripts/res.ts compare "$RUNNER_TEMP/bonfire-wasm/bonfire.wasm"; then exit 0; fi
+          commit=$(node -p "require('./res/build.json').source_commit")
+          git worktree add --detach "$RUNNER_TEMP/at-source" "$commit"
+          (cd "$RUNNER_TEMP/at-source/contracts/bonfire" && cargo near build reproducible-wasm)
+          node scripts/res.ts compare "$RUNNER_TEMP/at-source/contracts/bonfire/target/near/bonfire.wasm"
