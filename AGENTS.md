@@ -21,7 +21,7 @@ node scripts/res.ts check # res/bonfire.wasm is the recorded build and the contr
 npm run observe           # read-only checks of the deployed contract over public RPC, no key
 ```
 
-`npm run observe` prints `HELD`, `FAILED` or `UNAVAILABLE` per claim with the observed value, and exits non-zero unless every claim holds. Until the keyless final deployment exists it prints `UNAVAILABLE`. `npm run observe -- --deployment dev` checks the development deployment, which has an access key and older code, so 2 of 5 claims hold there by design.
+`npm run observe` prints `HELD`, `FAILED` or `UNAVAILABLE` per claim with the observed value, and exits non-zero unless every claim holds. On the keyless final deployment `fire.bonfire-hearth.testnet` all 5 claims hold. `npm run observe -- --deployment dev` checks the development deployment, which has an access key and older code, so 2 of 5 claims hold there by design.
 
 ## Contract checks (Rust; sandbox tests need Linux or macOS)
 
@@ -46,7 +46,7 @@ The wasm records its source commit in its NEP-330 metadata, so the rebuild must 
 
 ## What not to infer
 
-- The development deployment `bonfire-meraj-contract.testnet` has an access key. Don't treat it as immutable.
+- The development deployment `bonfire-meraj-contract.testnet` has an access key. Don't treat it as immutable. The final deployment is `fire.bonfire-hearth.testnet`.
 - Every account under `bonfire-meraj-` and every `*.bonfire-meraj-guests.testnet` account is team-run or a guest. None of them is an independent user.
 - Test NEAR has no value. Nothing here shows real-money demand.
 - The curator chooses missions, time windows and the reviewer, and the reviewer judges the work. These are trusted roles; see the README's Limits.

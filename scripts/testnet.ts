@@ -60,6 +60,12 @@ const MISSION_SETS: Record<string, MissionSpec[]> = {
     { title: "Fire Keepers leaderboard", brief: "docs/briefs/round-1/fire-keepers.md", maker: "maker2" },
     { title: "15-second mascot animation", brief: "docs/briefs/round-1/mascot-animation.md", maker: "maker3" },
   ],
+  // Round 2 runs on the keyless deployment. Fire Keepers returns from Round 1, which it lost.
+  "round-2": [
+    { title: "The hackathon demo video", brief: "docs/briefs/round-2/demo-video.md", maker: "maker1" },
+    { title: "Judge guide page", brief: "docs/briefs/round-2/judge-guide.md", maker: "maker2" },
+    { title: "Fire Keepers leaderboard", brief: "docs/briefs/round-1/fire-keepers.md", maker: "maker3" },
+  ],
   demo: [
     { title: "[demo] Delivery A", brief: "docs/briefs/demo.md", maker: "maker1" },
     { title: "[demo] Delivery B", brief: "docs/briefs/demo.md", maker: "maker2" },

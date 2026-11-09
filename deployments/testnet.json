@@ -1,0 +1,28 @@
+{
+  "network": "testnet",
+  "note": "Final deployment. The contract account was created, funded, deployed and initialized in one transaction with no AddKey action, so it has never had an access key. Every other account is a team-run, labeled demo actor.",
+  "prefix": "bonfire-meraj",
+  "accounts": {
+    "contract": "fire.bonfire-hearth.testnet",
+    "curator": "bonfire-meraj-curator.testnet",
+    "dist": "bonfire-meraj-dist.testnet",
+    "stoker": "bonfire-meraj-stoker.testnet",
+    "maker1": "bonfire-meraj-maker1.testnet",
+    "maker2": "bonfire-meraj-maker2.testnet",
+    "maker3": "bonfire-meraj-maker3.testnet",
+    "backer1": "bonfire-meraj-backer1.testnet",
+    "backer2": "bonfire-meraj-backer2.testnet",
+    "guests": "bonfire-meraj-guests.testnet"
+  },
+  "wasm_sha256": "e85ea4dd5416b4601f492555bcce735b26c4dc4377a301ee164114323b29bf7d",
+  "code_hash": "Ge5Hnw33MAsyNzZdd6fKXLxDcMkkK4peoyRzL7juGGeg",
+  "deployed_at": "2026-11-09T13:49:39.428Z",
+  "transactions": [
+    {
+      "action": "keyless deploy: create, fund, deploy, new",
+      "signer": "bonfire-hearth.testnet",
+      "tx_hash": "GNnnst1azSGwCVDxtMc12wLZR6GADyQ2JUhTziJqJjnA",
+      "at": "2026-11-09T13:49:38.241Z"
+    }
+  ]
+}

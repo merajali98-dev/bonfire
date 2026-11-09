@@ -27,7 +27,7 @@ Automated reviewers: start with [AGENTS.md](AGENTS.md). Every claim and its proo
 | Development deployment — `bonfire-meraj-contract.testnet` (has an access key; every account is a team-run demo actor) | One labeled demo round accepted on testnet: 15,000 EMBER burned, 0.75 test NEAR paid |
 | `apps/web` — live round, guest account or wallet sign-in, faucet, commit, My embers with settle, share cards rendered from chain data, a local Practice floor, a Ledger page with the proof checks, supply, burn log and Hearth, and a "Try to steal the fire" page where visitors send forbidden transactions from their own account and see the real refusal, and a Simulator page charting the 60-day scenarios ([site](https://bonfire-opal.vercel.app), [setup](apps/web/README.md)) | In progress; signed commits confirmed on testnet from a guest on a phone and from a wallet |
 | `res/bonfire.wasm` — the deployable build, made reproducibly in CI | Committed with its SHA-256 and source commit; provisional until the contract freezes |
-| Final keyless deployment | Not started |
+| Final keyless deployment — `fire.bonfire-hearth.testnet` | Live on testnet since 9 Nov: created, funded, deployed with `res/bonfire.wasm` and initialized in [one transaction](https://testnet.nearblocks.io/txns/GNnnst1azSGwCVDxtMc12wLZR6GADyQ2JUhTziJqJjnA) with no AddKey, so it has never had an access key. `npm run observe` holds 5 of 5. No rounds have run on it yet |
 
 Claims in this README are limited to what the repository currently contains.
 
@@ -76,7 +76,7 @@ npm run observe                        # the keyless final deployment (deploymen
 npm run observe -- --deployment dev    # the development deployment
 ```
 
-`observe` needs only Node 24 and public RPC. It checks that the deployed code hash equals `res/bonfire.wasm`, that the contract account has no access keys, that one transaction created, funded, deployed and initialized it with no AddKey, that the rules match the simulation, and that `audit()` reconciles. Each claim prints `HELD`, `FAILED` or `UNAVAILABLE` with what it observed, and anything but all `HELD` exits non-zero. The keyless deployment doesn't exist yet, so today it prints `UNAVAILABLE`. On the development deployment, 2 of 5 claims hold: it has an access key and older code.
+`observe` needs only Node 24 and public RPC. It checks that the deployed code hash equals `res/bonfire.wasm`, that the contract account has no access keys, that one transaction created, funded, deployed and initialized it with no AddKey, that the rules match the simulation, and that `audit()` reconciles. Each claim prints `HELD`, `FAILED` or `UNAVAILABLE` with what it observed, and anything but all `HELD` exits non-zero. On the keyless deployment all 5 hold. On the development deployment 2 of 5 hold, because it has an access key and older code.
 
 ## How a round's terms are set
 

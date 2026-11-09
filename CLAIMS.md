@@ -47,7 +47,7 @@ A claim marked **pending** depends on something not done yet and must not be mad
 | --- | --- | --- |
 | `res/bonfire.wasm` is a reproducible build of a named commit. | `node scripts/res.ts check`; CI job `reproducible` | `Reproduced: rebuilding <commit> gave the same <sha256>` |
 | The keyless deploy is one transaction with no AddKey. | `npm run testnet -- keyless --contract <id>` (prepare only); sandbox `keyless_deploy_in_one_transaction` | `Checked the unsigned transaction: CreateAccount, Transfer, DeployContract, FunctionCall new. No AddKey.`; pass |
-| The final contract has never had an access key and runs `res/bonfire.wasm`. | `npm run observe` | **pending**: the keyless deployment doesn't exist yet |
+| The final contract `fire.bonfire-hearth.testnet` has never had an access key and runs `res/bonfire.wasm`. | `npm run observe`; [the deploy transaction](https://testnet.nearblocks.io/txns/GNnnst1azSGwCVDxtMc12wLZR6GADyQ2JUhTziJqJjnA) | `5 of 5 held`: code hash `Ge5Hnw33MAsyNzZdd6fKXLxDcMkkK4peoyRzL7juGGeg`, 0 access keys, CreateAccount, Transfer, DeployContract, FunctionCall `new` |
 | The development deployment has an access key and older code. | `npm run observe -- --deployment dev` | `FAILED` on code hash and access keys; 2 of 5 held |
 | One labeled demo round was accepted on testnet: 15,000 EMBER burned, 0.75 test NEAR paid. | `npm run testnet -- status`; site Ledger, burn log | Round 0 `Accepted`, `burned 15,000 EMBER`, `Paid` |
 
