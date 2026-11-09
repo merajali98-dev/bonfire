@@ -4,3 +4,5 @@ docs/briefs/** text eol=lf
 docs/simulation.md text eol=lf
 packages/simulator/reports/** text eol=lf
 packages/protocol/fixtures/** text eol=lf
+# Delivered work is hashed on-chain byte for byte.
+deliveries/** -text
