@@ -6,6 +6,16 @@ Put your EMBER behind the mission you want made. If it wins and the work is acce
 
 Built at NEAR HACKATHON (Memecoins With Mechanics; Social Money). Work in progress, testnet only.
 
+## Try it in five minutes
+
+1. Open [the site](https://bonfire-opal.vercel.app) and start as a guest: no wallet or install. Or connect a wallet.
+2. Claim faucet EMBER and back a mission in the live round.
+3. Open **Practice** to run a whole round (back, candle, draw, build, review, burn, settle) in about 90 seconds, locally.
+4. Open **Steal the fire** and try to take NEAR out of the Hearth, mint, or accept work yourself. Each attempt is a real transaction, and the contract refuses it.
+5. Open **Ledger** for the proof checks, supply, burn log and Hearth.
+
+Automated reviewers: start with [AGENTS.md](AGENTS.md). Every claim and its proof is in [CLAIMS.md](CLAIMS.md).
+
 ## Status
 
 | Part | State |

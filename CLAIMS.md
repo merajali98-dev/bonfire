@@ -1,0 +1,51 @@
+# Claims
+
+Every claim BONFIRE makes in the README, on the site or in posts, with what proves it. Unit tests run with `cd contracts/bonfire && cargo test --lib`. Sandbox tests run on Linux with `cargo test --test sandbox -- --test-threads=1`, and in [CI](.github/workflows/contract.yml) on every push. Simulator and web checks run with `npm test`.
+
+A claim marked **pending** depends on something not done yet and must not be made publicly until its status changes.
+
+## Mechanism
+
+| Claim | Proof | Expected |
+| --- | --- | --- |
+| Your EMBER burns only if your mission wins and its work is accepted; otherwise you get it back. | unit `full_success_path_burns_exactly_counted_and_pays_matched`, `rejection_refunds_winner_and_recycles_budget`, `missed_delivery_expires_and_refunds`, `absent_reviewer_expires_and_refunds`, `below_threshold_fails_selection`, `tie_fails_selection_and_refunds_everything` | pass |
+| Acceptance burns exactly the counted winning escrow, no more. | unit `full_success_path_burns_exactly_counted_and_pays_matched`; sandbox `simulator_replay_matches_wasm` | pass; every round `matched` |
+| Commitments after the drawn candle checkpoint don't count and are refunded. | unit `late_candle_commitment_is_not_counted_and_is_refundable`, `late_portion_of_winner_refunds_before_acceptance` | pass |
+| You can't withdraw once the candle is lit. | unit `withdraw_during_candle_is_refused` | `ERR_CANDLE_LIT` |
+| The candle draw happens once, only after backing closes. | unit `cannot_select_before_close`, `cannot_select_twice` | `ERR_STILL_BURNING`, `ERR_WRONG_STATUS` |
+| The payout is `budget × min(counted, target) / target`, and the rest goes back to the Hearth. | unit `payout_capped_at_budget_when_target_exceeded`, `math_matches_the_shared_fixtures`; `npm test` (`rules match the shared fixtures`) | pass |
+| The creator can't be paid before acceptance, and only the reviewer can accept, only the submitted hash. | unit `creator_cannot_claim_before_acceptance`, `non_reviewer_cannot_accept`, `reviewer_cannot_accept_different_hash` | `ERR_NOT_ACCEPTED`, `ERR_NOT_REVIEWER`, `ERR_HASH_MISMATCH` |
+| A payout is paid once; a failed transfer can be retried. | sandbox `payout_transfer_pays_creator_exactly_once`, `payout_to_deleted_account_restores_available_and_can_retry` | pass |
+| Settling is permissionless and can't pay twice. | unit `cannot_settle_twice`, `cannot_settle_before_selection` | `ERR_NOTHING_TO_SETTLE`, `ERR_NOT_SELECTED` |
+| Ash comes only from burning in accepted rounds, and nominating needs Ash. | unit `ash_grants_nomination_right`, `nominating_without_ash_is_refused` | pass, `ERR_INSUFFICIENT_ASH` |
+| Tokens and NEAR always reconcile. | unit `randomized_rounds_conserve_tokens_and_near`, `genesis_reconciles`; view `audit` | pass; `supply_ok`, `escrow_ok`, `near_ok` all `true` |
+
+## Money and rules
+
+| Claim | Proof | Expected |
+| --- | --- | --- |
+| The Hearth has no withdrawal method; NEAR leaves only as a payout for accepted work. | The contract's method list in `contracts/bonfire/src`; site page "Steal the fire" (`withdraw_hearth`) | no such method; `MethodNotFound` |
+| Nothing can mint after genesis. | `contracts/bonfire/src/lib.rs` (`new` mints once); "Steal the fire" (`mint`) | `MethodNotFound` |
+| No call can set a round's budget, threshold or target. | unit `round_args_refuse_budget_threshold_and_target`; sandbox `curator_cannot_set_a_rounds_money_terms` | `Failed to deserialize input from JSON` |
+| Each round's budget is 25% of the Hearth, its target is 4× its threshold, and the threshold moves ×1.05 after a winner and ×0.85 when nothing qualifies, never below 1,000 EMBER. | unit `budget_is_a_share_of_the_pool_at_creation`, `a_winner_raises_the_next_threshold_and_target`, `nothing_reaching_threshold_lowers_it`, `threshold_never_falls_below_the_floor`; view `get_config` | pass; `rules` as stated |
+| The rule values came from the simulation. | `npm run simulate` regenerates [docs/simulation.md](docs/simulation.md); CI fails if it is stale; `npm test` (`the deploy script uses the rules the simulator recommends`) | no diff; pass |
+| The simulator's rules match the contract's wasm. | sandbox `simulator_replay_matches_wasm` | `METRIC replay: rounds matched: 8` |
+| A whale that abstains until the threshold halves pays about 84% less per win (8.1 of 20 rounds) in thin crowds. | [docs/simulation.md](docs/simulation.md), "Threshold controller" | as stated |
+
+## Build and deployment
+
+| Claim | Proof | Expected |
+| --- | --- | --- |
+| `res/bonfire.wasm` is a reproducible build of a named commit. | `node scripts/res.ts check`; CI job `reproducible` | `Reproduced: rebuilding <commit> gave the same <sha256>` |
+| The keyless deploy is one transaction with no AddKey. | `npm run testnet -- keyless --contract <id>` (prepare only); sandbox `keyless_deploy_in_one_transaction` | `Checked the unsigned transaction: CreateAccount, Transfer, DeployContract, FunctionCall new. No AddKey.`; pass |
+| The final contract has never had an access key and runs `res/bonfire.wasm`. | `npm run observe` | **pending**: the keyless deployment doesn't exist yet |
+| The development deployment has an access key and older code. | `npm run observe -- --deployment dev` | `FAILED` on code hash and access keys; 2 of 5 held |
+| One labeled demo round was accepted on testnet: 15,000 EMBER burned, 0.75 test NEAR paid. | `npm run testnet -- status`; site Ledger, burn log | Round 0 `Accepted`, `burned 15,000 EMBER`, `Paid` |
+
+## Site
+
+| Claim | Proof | Expected |
+| --- | --- | --- |
+| The Practice floor runs a whole round with no wallet and never touches the chain. | `apps/web/src/practice-floor.ts` imports no network code; `npm test` (`practice-floor.test.ts`) | pass |
+| "Steal the fire" shows the chain's real answer, and never reports a refusal it didn't get. | `npm test` (`lab-attacks.test.ts`, `only the expected refusal counts as refused`) | pass |
+| Team and guest accounts are labeled wherever they appear. | `npm test` (`team and guest accounts are labeled`) | pass |
