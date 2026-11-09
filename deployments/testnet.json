@@ -23,6 +23,72 @@
       "signer": "bonfire-hearth.testnet",
       "tx_hash": "GNnnst1azSGwCVDxtMc12wLZR6GADyQ2JUhTziJqJjnA",
       "at": "2026-11-09T13:49:38.241Z"
+    },
+    {
+      "action": "stoke",
+      "signer": "bonfire-meraj-stoker.testnet",
+      "tx_hash": "F81hLSN6KQ368qukUGN9nWSsFmUaq3L9XA3AqGvkfePu",
+      "at": "2026-11-09T13:59:24.444Z"
+    },
+    {
+      "action": "storage_deposit",
+      "signer": "bonfire-meraj-backer1.testnet",
+      "tx_hash": "6HwpaQvG6Sbd3duiQKGVdU39PR3zKsJngDPyJdDMhk2s",
+      "at": "2026-11-09T13:59:30.171Z"
+    },
+    {
+      "action": "ft_transfer",
+      "signer": "bonfire-meraj-dist.testnet",
+      "tx_hash": "88m3bUTo2XrTk8qS7Z27WQMkdN97hAyRrK3XziYrEb8q",
+      "at": "2026-11-09T13:59:36.650Z"
+    },
+    {
+      "action": "storage_deposit",
+      "signer": "bonfire-meraj-backer2.testnet",
+      "tx_hash": "92qRWjcwYNUEzGYyTUtVWveV41DNS77DaphvA7HVctYD",
+      "at": "2026-11-09T13:59:42.970Z"
+    },
+    {
+      "action": "ft_transfer",
+      "signer": "bonfire-meraj-dist.testnet",
+      "tx_hash": "9pSpvmGYtiEcjUFaYn9TyrMhLMDVPCGtN4Qcgr4VKNmD",
+      "at": "2026-11-09T13:59:47.841Z"
+    },
+    {
+      "action": "nominate",
+      "signer": "bonfire-meraj-curator.testnet",
+      "tx_hash": "AALtHczwcU2KzKPYQJ7FHKvDEXdVLGcxmqwA35xf8kCA",
+      "at": "2026-11-09T13:59:52.687Z"
+    },
+    {
+      "action": "consent",
+      "signer": "bonfire-meraj-maker1.testnet",
+      "tx_hash": "9bNd4Qz7zyHAMABk76yKpFnJ3NiUQA52F8vdkKxqUg4q",
+      "at": "2026-11-09T13:59:57.439Z"
+    },
+    {
+      "action": "nominate",
+      "signer": "bonfire-meraj-curator.testnet",
+      "tx_hash": "Du5AzRPaQ4QkGFsE2U6aoXtf3ygbmegZGWn3FjhZTTpE",
+      "at": "2026-11-09T14:00:03.060Z"
+    },
+    {
+      "action": "consent",
+      "signer": "bonfire-meraj-maker2.testnet",
+      "tx_hash": "2HSoFrxT6e6Gqi7uTxpuPquWuuYVy4aN4xEkWGsZXRnW",
+      "at": "2026-11-09T14:00:07.857Z"
+    },
+    {
+      "action": "nominate",
+      "signer": "bonfire-meraj-curator.testnet",
+      "tx_hash": "ERqdiZR3xUM7UNaU4oyFa2g4jsipuMoYdNgDoLkEMNF",
+      "at": "2026-11-09T14:00:14.564Z"
+    },
+    {
+      "action": "consent",
+      "signer": "bonfire-meraj-maker3.testnet",
+      "tx_hash": "E5bbZjCak4MFBbXehdQRRjdUf6LWknmTnLX8Hra3VCRR",
+      "at": "2026-11-09T14:00:20.709Z"
     }
   ]
 }
