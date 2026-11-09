@@ -4,6 +4,7 @@ import { Brief } from "./Brief";
 import { CONTRACT, EXPLORER_TX, loadHoldings, loadSnapshot, view, type Holdings, type Snapshot } from "./chain";
 import { EmbersPage } from "./Embers";
 import { Hero } from "./Fire";
+import { PracticePage } from "./Practice";
 import { countdown, parseEmber, shortAccount, showEmber, showNear } from "./format";
 import { sceneOf } from "./scene";
 import { Share } from "./Share";
@@ -100,14 +101,21 @@ export function App() {
     <div className="page">
       <header className="top">
         <div className="brand"><img src="/art/flame-mark.webp" alt="" />BONFIRE</div>
-        <span className="mode" title="Real transactions on NEAR testnet">Live · testnet</span>
+        {route === "practice" ? (
+          <span className="mode practice" title="Local practice. Nothing is sent to any network.">Practice · local only</span>
+        ) : (
+          <span className="mode" title="Real transactions on NEAR testnet">Live · testnet</span>
+        )}
       </header>
       <nav className="tabs">
         <a href="#/" className={route === "home" ? "on" : ""} aria-current={route === "home" ? "page" : undefined}>The fire</a>
         <a href="#/embers" className={route === "embers" ? "on" : ""} aria-current={route === "embers" ? "page" : undefined}>My embers</a>
+        <a href="#/practice" className={route === "practice" ? "on" : ""} aria-current={route === "practice" ? "page" : undefined}>Practice</a>
       </nav>
 
-      {route === "embers" ? (
+      {route === "practice" ? (
+        <PracticePage />
+      ) : route === "embers" ? (
         <div className="narrow">
           {session ? <EmbersPage session={session} holdings={holdings} faucetLabel={claimLabel} onClaim={claim} now={now} busy={busy} run={run} /> : account}
         </div>
@@ -128,7 +136,7 @@ export function App() {
         </div>
       )}
 
-      {notice && (
+      {notice && route !== "practice" && (
         <div className={`notice ${notice.tone}`} role="status" onClick={() => notice.tone !== "busy" && setNotice(null)}>
           {notice.text}{" "}
           {notice.hash && <a href={EXPLORER_TX + notice.hash} target="_blank" rel="noreferrer">View transaction</a>}
@@ -143,7 +151,7 @@ export function App() {
   );
 }
 
-const routeOf = () => (window.location.hash === "#/embers" ? "embers" : "home");
+const routeOf = () => (window.location.hash === "#/embers" ? "embers" : window.location.hash === "#/practice" ? "practice" : "home");
 
 export interface ActionProps {
   busy: boolean;

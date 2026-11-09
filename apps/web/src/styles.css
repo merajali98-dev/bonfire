@@ -973,3 +973,112 @@ code {
     display: none;
   }
 }
+
+/* Practice floor. It must never look like the live round: a fixed banner, a cool blue
+   accent instead of the fire's orange on its controls, and dashed cards. */
+
+.mode.practice {
+  color: #9ecbff;
+  border-color: #9ecbff;
+}
+
+.practice-banner {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  gap: 2px;
+  margin: 12px 0 16px;
+  padding: 10px 14px;
+  border: 2px solid #9ecbff;
+  border-radius: 12px;
+  color: #e6f1ff;
+  background: repeating-linear-gradient(135deg, #16263a 0 14px, #1b2f47 14px 28px);
+}
+
+.practice-banner strong {
+  font-family: var(--display);
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.practice-banner span {
+  font-size: 14px;
+}
+
+.practice-card {
+  border-style: dashed;
+  border-color: #47617f;
+}
+
+.practice button:not(.link):not(.ghost) {
+  background: #9ecbff;
+  color: #0b1624;
+}
+
+.practice .choice.on {
+  border-color: #9ecbff;
+}
+
+.practice-phase {
+  color: #9ecbff;
+  border-color: #9ecbff;
+}
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.steps li {
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--dim);
+}
+
+.steps li.done {
+  color: var(--text);
+}
+
+.steps li.on {
+  color: #0b1624;
+  background: #9ecbff;
+  border-color: #9ecbff;
+}
+
+.practice-log {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--dim);
+}
+
+.practice-log li:first-child {
+  color: var(--text);
+}
+
+.button-link {
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text) !important;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+@media (min-width: 960px) and (min-height: 800px) {
+  .practice .hero {
+    top: 96px;
+  }
+}

@@ -28,7 +28,7 @@ function Sparks({ count, burst }: { count: number; burst?: boolean }) {
   );
 }
 
-function FireScene({ scene, roundId }: { scene: Scene; roundId: number | null }) {
+export function FireScene({ scene, roundId }: { scene: Scene; roundId: number | null }) {
   const burned = scene.mood === "burned";
   const heat = burned ? 0.25 : scene.fire === null ? 0.06 : HEAT[scene.fire];
   const classes = ["scene", `mascot-${scene.mascot}`, scene.candle ? "has-candle" : "", burned ? "burned" : ""].join(" ");
