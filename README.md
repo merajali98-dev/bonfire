@@ -85,6 +85,7 @@ The contract computes every round's money terms from rules fixed at initializati
 - **Budget:** a fixed share of the Hearth at creation, with a minimum below which no round can open.
 - **Threshold:** the next round's threshold rises after a round finds a winner and falls when nothing reaches it. A tie at or above it leaves it alone, and rejected or expired work doesn't move it.
 - **Target:** a fixed multiple of the threshold.
+- **Windows:** only one round can be funded at a time, and each window has a minimum and maximum fixed at initialization: backing lasts 1 hour to 7 days, the candle 10 minutes to 1 day, and delivery and review 1 hour to 3 days each. A round must open within 2 days of being created.
 
 The curator still chooses which consented missions enter a round, its time windows and its reviewer, and the reviewer judges the work.
 
@@ -103,6 +104,8 @@ The ×1.05 / ×0.85 pair scored 0.825 in the controller sweep against 0.854 for 
 ## Limits
 
 - **A whale can lower the threshold, then win cheaply.** The threshold falls after every round that nothing reaches. In the simulator, where the crowd alone can't reach the threshold, a whale that abstains until the threshold has halved and then backs one mission with just enough to win takes 8.1 of 20 rounds at about 2,802 EMBER per win. A whale that backs every round takes 13.0 at about 17,192. The abstaining whale pays about 84% less per win, and the threshold settles near 3,705 EMBER. Nothing in the contract prevents this. A higher threshold floor might limit it, but that is untested. Details are in the [simulation report](docs/simulation.md#threshold-controller).
+- **A tie can veto a round for free.** Anyone who matches the leading mission's tally at every candle checkpoint forces a tie whichever checkpoint is drawn. A tie fails the round and refunds everyone, the attacker included, so blocking a round costs no EMBER. It does need as much EMBER as the leader, and it doesn't move the threshold. The tie rule is unchanged; the test `matching_the_leader_at_every_checkpoint_forces_a_tie_at_no_cost` shows it.
+- **The curator still steers the threshold a little.** It chooses when rounds run, and an empty round lowers the next threshold. Only one round can be funded at a time, and backing lasts at least an hour, so walking the threshold from 10,000 EMBER to its 1,000 floor takes at least 15 hour-long empty rounds, in public.
 - **Weight follows EMBER.** Splitting a balance across wallets gains nothing, but amount weighting doesn't stop whales, bought votes, creators backing their own missions, or collusion.
 - **The faucet is farmable.** Testnet accounts are nearly free, so anyone can collect faucet EMBER until the faucet pool runs out.
 - **Ash concentrates.** It goes to whoever burns the most, and the right to nominate missions follows it.

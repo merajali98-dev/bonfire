@@ -78,6 +78,7 @@ pub mod err {
     pub const NOT_REGISTERED: &str = "ERR_NOT_REGISTERED";
     pub const ALREADY_USED: &str = "ERR_NOMINATION_USED";
     pub const NOT_CONSENTED: &str = "ERR_NOT_CONSENTED";
+    pub const ROUND_OPEN: &str = "ERR_ROUND_OPEN";
 }
 
 #[near(serializers = [borsh])]
@@ -129,6 +130,9 @@ pub struct Contract {
 
     /// Threshold the next round will use. Changes only inside `select`.
     pub(crate) next_threshold: u128,
+    /// The one round still in `Funded` (scheduled or backing), if any. Only one may exist at a
+    /// time, so rounds move the threshold one after another.
+    pub(crate) funded_round: Option<u32>,
 }
 
 #[near]
@@ -145,11 +149,13 @@ impl Contract {
         faucet_interval_ms: u64,
         nominate_min_ash: U128,
         rules: HearthRules,
+        limits: RoundLimits,
     ) -> Self {
         require!(faucet_amount.0 > 0 && faucet_interval_ms > 0, err::BAD_PARAMS);
         let initial = distribution_amount.0.checked_add(faucet_pool.0).expect("overflow");
         require!(initial > 0, err::BAD_PARAMS);
         require!(rules.is_valid(initial), err::BAD_PARAMS);
+        require!(limits.is_valid(), err::BAD_PARAMS);
         let next_threshold = rules.initial_threshold.0;
         let me = env::current_account_id();
         require!(distribution_account != me, err::BAD_PARAMS);
@@ -174,6 +180,7 @@ impl Contract {
             nominate_min_ash,
             initial_supply: U128(initial),
             rules,
+            limits,
         };
         emit("genesis", json!({ "config": &config }));
 
@@ -201,6 +208,7 @@ impl Contract {
             resolve_burned: 0,
             total_ash: 0,
             next_threshold,
+            funded_round: None,
         }
     }
 
@@ -250,10 +258,15 @@ impl Contract {
 
     // ------------------------------------------------------------- Nominations
 
-    /// Propose a mission. Allowed for the curator or any account holding enough Ash.
+    /// Propose a mission. Allowed for the curator or any account holding enough Ash. Anyone but
+    /// the curator pays for the nomination's storage: attach at least what it uses (about
+    /// 0.006 NEAR at the maximum size). Any excess is refunded. The curator's nominations come
+    /// from the contract's operating reserve.
+    #[payable]
     pub fn nominate(&mut self, creator: AccountId, title: String, brief_uri: String, brief_hash: String) -> u32 {
         let who = env::predecessor_account_id();
-        if who != self.config.curator {
+        let is_curator = who == self.config.curator;
+        if !is_curator {
             require!(self.ash_of(&who) >= self.config.nominate_min_ash.0, err::INSUFFICIENT_ASH);
         }
         require!(!title.is_empty() && title.len() <= MAX_TITLE_LEN, err::BAD_PARAMS);
@@ -262,7 +275,7 @@ impl Contract {
         let id = self.nominations.len();
         let n = Nomination {
             id,
-            nominator: who,
+            nominator: who.clone(),
             creator,
             title,
             brief_uri,
@@ -272,7 +285,21 @@ impl Contract {
             created_at_ms: env::block_timestamp_ms(),
         };
         emit("nominate", json!({ "nomination": &n }));
+        // Flush so the storage the nomination takes is measured now, not at the end of the call.
+        let before = env::storage_usage();
         self.nominations.push(n);
+        self.nominations.flush();
+        let cost = u128::from(env::storage_usage().saturating_sub(before)) * env::storage_byte_cost().as_yoctonear();
+        let attached = env::attached_deposit().as_yoctonear();
+        let refund = if is_curator {
+            attached
+        } else {
+            require!(attached >= cost, err::DEPOSIT);
+            attached - cost
+        };
+        if refund > 0 {
+            Promise::new(who).transfer(NearToken::from_yoctonear(refund)).detach();
+        }
         id
     }
 

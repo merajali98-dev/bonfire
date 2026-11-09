@@ -95,6 +95,21 @@ fn rules() -> HearthRules {
     }
 }
 
+/// Short windows so the unit-test timeline fits; launch values are in scripts/testnet.ts.
+fn limits() -> RoundLimits {
+    RoundLimits {
+        max_lead_ms: 30 * DAY,
+        min_backing_ms: 100,
+        max_backing_ms: 30 * DAY,
+        min_candle_ms: 100,
+        max_candle_ms: DAY,
+        min_delivery_ms: 100,
+        max_delivery_ms: DAY,
+        min_review_ms: 100,
+        max_review_ms: DAY,
+    }
+}
+
 fn setup() -> Contract {
     at(0);
     seed([7u8; 32]);
@@ -104,7 +119,7 @@ fn setup() -> Contract {
         b.take_storage();
     });
     set(&curator(), 0);
-    let mut c = Contract::new(curator(), dist(), U128(850_000 * E), U128(150_000 * E), U128(1_000 * E), DAY, U128(1_000 * E), rules());
+    let mut c = Contract::new(curator(), dist(), U128(850_000 * E), U128(150_000 * E), U128(1_000 * E), DAY, U128(1_000 * E), rules(), limits());
     for i in 0..3 {
         register(&mut c, &creator(i));
     }
@@ -244,7 +259,7 @@ fn full_success_path_burns_exactly_counted_and_pays_matched() {
     set(&creator(0), 0);
     c.submit(r, hash(9), "ipfs://work".into());
     at(5_500);
-    set(&curator(), 0);
+    set(&curator(), 1);
     let supply_before = c.token.total_supply;
     c.accept(r, hash(9));
     assert_eq!(c.token.total_supply, supply_before - 20_000 * E);
@@ -293,7 +308,7 @@ fn failed_payout_restores_claim_and_can_retry() {
     c.select(r);
     set(&creator(0), 0);
     c.submit(r, hash(1), "u".into());
-    set(&curator(), 0);
+    set(&curator(), 1);
     c.accept(r, hash(1));
     let _ = c.claim_payout(r);
     set_with(&me(), 0, vec![PromiseResult::Failed]);
@@ -357,7 +372,7 @@ fn late_portion_of_winner_refunds_before_acceptance() {
     assert_eq!(c.settle(r, user(0)).0, 10_000 * E);
     set(&creator(0), 0);
     c.submit(r, hash(2), "u".into());
-    set(&curator(), 0);
+    set(&curator(), 1);
     c.accept(r, hash(2));
     set(&user(0), 0);
     assert_eq!(c.settle(r, user(0)).0, 0);
@@ -448,7 +463,7 @@ fn rejection_refunds_winner_and_recycles_budget() {
     let r = selected_round(&mut c);
     set(&creator(0), 0);
     c.submit(r, hash(3), "u".into());
-    set(&curator(), 0);
+    set(&curator(), 1);
     c.reject(r);
     assert_eq!(c.hearth_pool, 100 * N);
     set(&user(0), 0);
@@ -501,6 +516,7 @@ macro_rules! attack {
     ($name:ident, $code:expr, |$c:ident| $body:block) => {
         #[test]
         #[should_panic(expected = $code)]
+        #[allow(unused_mut)]
         fn $name() {
             let mut $c = setup();
             $body
@@ -525,7 +541,7 @@ attack!(reviewer_cannot_accept_different_hash, "ERR_HASH_MISMATCH", |c| {
     let r = selected_round(&mut c);
     set(&creator(0), 0);
     c.submit(r, hash(1), "u".into());
-    set(&curator(), 0);
+    set(&curator(), 1);
     c.accept(r, hash(2));
 });
 
@@ -534,7 +550,7 @@ attack!(reviewer_cannot_accept_after_deadline, "ERR_DEADLINE_PASSED", |c| {
     set(&creator(0), 0);
     c.submit(r, hash(1), "u".into());
     at(REVIEW);
-    set(&curator(), 0);
+    set(&curator(), 1);
     c.accept(r, hash(1));
 });
 
@@ -604,11 +620,11 @@ attack!(round_cannot_open_below_minimum_budget, "ERR_HEARTH_TOO_LOW", |c| {
     c.create_round(CreateRoundArgs {
         nomination_ids: vec![0, 1, 2],
         reviewer: curator(),
-        open_at_ms: 1,
-        candle_start_ms: 2,
-        backing_close_ms: 3,
-        delivery_deadline_ms: 4,
-        review_deadline_ms: 5,
+        open_at_ms: OPEN,
+        candle_start_ms: CANDLE,
+        backing_close_ms: CLOSE,
+        delivery_deadline_ms: DELIVERY,
+        review_deadline_ms: REVIEW,
         checkpoints: 1,
     });
 });
@@ -623,11 +639,11 @@ attack!(unconsented_nomination_cannot_enter_round, "ERR_NOT_CONSENTED", |c| {
     c.create_round(CreateRoundArgs {
         nomination_ids: vec![0, 1, 2],
         reviewer: curator(),
-        open_at_ms: 1,
-        candle_start_ms: 2,
-        backing_close_ms: 3,
-        delivery_deadline_ms: 4,
-        review_deadline_ms: 5,
+        open_at_ms: OPEN,
+        candle_start_ms: CANDLE,
+        backing_close_ms: CLOSE,
+        delivery_deadline_ms: DELIVERY,
+        review_deadline_ms: REVIEW,
         checkpoints: 1,
     });
 });
@@ -704,12 +720,12 @@ fn ash_grants_nomination_right() {
     let r = selected_round(&mut c);
     set(&creator(0), 0);
     c.submit(r, hash(1), "u".into());
-    set(&curator(), 0);
+    set(&curator(), 1);
     c.accept(r, hash(1));
     c.settle(r, user(0));
     assert_eq!(c.ash_of(&user(0)), 40_000 * E);
     assert_eq!(c.total_ash, 40_000 * E);
-    set(&user(0), 0);
+    set(&user(0), N / 100);
     let id = c.nominate(creator(2), "Fan pick".into(), "".into(), hash(5));
     assert_eq!(c.get_nomination(id).unwrap().nominator, user(0));
 }
@@ -759,8 +775,10 @@ fn budget_is_a_share_of_the_pool_at_creation() {
     assert_eq!(rd.threshold.0, 10_000 * E);
     assert_eq!(rd.target.0, 40_000 * E);
     assert_eq!(c.hearth_pool, 80 * N);
-    let r2 = round(&mut c); // 80 + 100 stoked
-    assert_eq!(round_of(&c, r2).budget.0, 36 * N);
+    set(&curator(), 0);
+    c.cancel_round(r); // the budget returns: 100 in the pool
+    let r2 = round(&mut c); // 100 + 100 stoked
+    assert_eq!(round_of(&c, r2).budget.0, 40 * N);
     check(&c, &everyone());
 }
 
@@ -871,7 +889,7 @@ fn rejected_or_expired_work_does_not_move_the_threshold() {
     assert_eq!(c.next_threshold, 11_000 * E);
     set(&creator(0), 0);
     c.submit(r, hash(3), "u".into());
-    set(&curator(), 0);
+    set(&curator(), 1);
     c.reject(r);
     assert_eq!(c.next_threshold, 11_000 * E);
 
@@ -884,11 +902,12 @@ fn rejected_or_expired_work_does_not_move_the_threshold() {
 }
 
 #[test]
-fn overlapping_rounds_each_move_the_threshold_once() {
+fn rounds_run_one_at_a_time_and_each_moves_the_threshold_once() {
     let mut c = setup();
     let a = round(&mut c);
-    let b = round(&mut c);
-    assert_eq!(round_of(&c, b).threshold.0, 10_000 * E, "created before any select");
+    set(&curator(), 100 * N);
+    c.stoke();
+    let ids = nominate_three(&mut c);
     fund(&mut c, &user(0), 20_000 * E);
     at(OPEN);
     commit(&mut c, &user(0), a, 0, 20_000 * E);
@@ -896,14 +915,23 @@ fn overlapping_rounds_each_move_the_threshold_once() {
     set(&user(9), 0);
     c.select(a);
     assert_eq!(c.next_threshold, 11_000 * E);
+    // The next round can open only now that the first has left Funded, and it gets the moved threshold.
+    let b = create(&mut c, ids, LATER);
+    assert_eq!(round_of(&c, b).threshold.0, 11_000 * E);
+    at(CLOSE + LATER);
+    set(&user(9), 0);
     c.select(b);
-    assert_eq!(c.next_threshold, 7_700 * E);
+    assert_eq!(c.next_threshold, 7_700 * E, "an empty round lowers it once");
     assert_eq!(round_of(&c, a).threshold.0, 10_000 * E);
-    assert_eq!(round_of(&c, b).threshold.0, 10_000 * E);
-    let later = round_at(&mut c, LATER);
+    let later = round_at(&mut c, 2 * LATER);
     assert_eq!(round_of(&c, later).threshold.0, 7_700 * E);
     check(&c, &everyone());
 }
+
+attack!(a_second_round_cannot_open_while_one_is_funded, "ERR_ROUND_OPEN", |c| {
+    round(&mut c);
+    round(&mut c);
+});
 
 #[test]
 fn invalid_rules_are_refused() {
@@ -935,7 +963,7 @@ attack!(new_refuses_invalid_rules, "ERR_BAD_PARAMS", |c| {
     let _ = c.get_round_count();
     let mut bad = rules();
     bad.up_bps = 1;
-    Contract::new(curator(), dist(), U128(E), U128(E), U128(E), DAY, U128(E), bad);
+    Contract::new(curator(), dist(), U128(E), U128(E), U128(E), DAY, U128(E), bad, limits());
 });
 
 #[test]
@@ -1058,7 +1086,7 @@ fn randomized_rounds_conserve_tokens_and_near() {
             let w = c.rounds.get(r).unwrap().winner.unwrap() as usize;
             set(&creator(w), 0);
             c.submit(r, hash(1), "u".into());
-            set(&curator(), 0);
+            set(&curator(), 1);
             if rng.below(3) == 0 {
                 c.reject(r);
             } else {
@@ -1096,3 +1124,267 @@ impl Contract {
         self.expire(r);
     }
 }
+
+// ======================================================================= adversarial review
+// Regression tests from the 9 Nov adversarial review of 4c025d2. Where a fix changed the
+// outcome, the test asserts the fixed behaviour; the tie veto is a disclosed limit and is kept.
+
+const HOUR: u64 = 3_600_000;
+
+/// The launch windows from scripts/testnet.ts.
+fn launch_limits() -> RoundLimits {
+    RoundLimits {
+        max_lead_ms: 2 * DAY,
+        min_backing_ms: HOUR,
+        max_backing_ms: 7 * DAY,
+        min_candle_ms: 10 * 60_000,
+        max_candle_ms: DAY,
+        min_delivery_ms: HOUR,
+        max_delivery_ms: 3 * DAY,
+        min_review_ms: HOUR,
+        max_review_ms: 3 * DAY,
+    }
+}
+
+fn launch_rules(c: &mut Contract) {
+    c.config.rules.budget_bps = 2_500;
+    c.config.rules.up_bps = 10_500;
+    c.config.rules.down_bps = 8_500;
+}
+
+/// One faucet claim, backed on the winning mission, reaches nominate_min_ash.
+fn attacker_with_ash(c: &mut Contract) -> AccountId {
+    let attacker = user(7);
+    let r = round(c);
+    set(&attacker, N / 100);
+    c.faucet();
+    fund(c, &user(0), 20_000 * E);
+    at(OPEN);
+    commit(c, &user(0), r, 0, 20_000 * E);
+    commit(c, &attacker, r, 0, 1_000 * E);
+    at(CLOSE);
+    set(&user(5), 0);
+    c.select(r);
+    at(4_000);
+    set(&creator(0), 0);
+    c.submit(r, hash(9), "ipfs://work".into());
+    at(5_500);
+    set(&curator(), 1);
+    c.accept(r, hash(9));
+    set(&attacker, 0);
+    c.settle(r, attacker.clone());
+    assert_eq!(c.ash_of(&attacker), 1_000 * E);
+    attacker
+}
+
+fn max_nomination(c: &mut Contract) -> u32 {
+    c.nominate("a".repeat(64).parse().unwrap(), "t".repeat(80), "u".repeat(256), hash(1))
+}
+
+/// Storage cost of one maximum-size nomination by `who`, measured on a nomination it makes
+/// with a generous deposit. The nominator's account ID is stored, so the cost depends on it.
+fn nomination_cost(c: &mut Contract, who: &AccountId) -> u128 {
+    set(who, N);
+    c.nominations.flush();
+    let before = env::storage_usage();
+    max_nomination(c);
+    u128::from(env::storage_usage() - before) * env::storage_byte_cost().as_yoctonear()
+}
+
+// Fix 1: an Ash holder could grow contract storage for free until the reserve, then the
+// Hearth's NEAR, paid for it.
+attack!(an_ash_holder_cannot_nominate_without_paying_for_storage, "ERR_DEPOSIT", |c| {
+    let attacker = attacker_with_ash(&mut c);
+    set(&attacker, 0);
+    max_nomination(&mut c);
+});
+
+attack!(a_deposit_one_yocto_short_of_the_storage_is_refused, "ERR_DEPOSIT", |c| {
+    let attacker = attacker_with_ash(&mut c);
+    let cost = nomination_cost(&mut c, &attacker);
+    set(&attacker, cost - 1);
+    max_nomination(&mut c);
+});
+
+#[test]
+fn a_nomination_paid_for_exactly_leaves_the_reserve_untouched() {
+    let mut c = setup();
+    let attacker = attacker_with_ash(&mut c);
+    let cost = nomination_cost(&mut c, &attacker);
+    let per = cost / env::storage_byte_cost().as_yoctonear();
+    println!("bytes per maximum-size nomination: {per}");
+    assert!(per > 400 && per < 1_000, "{per} bytes");
+    set(&attacker, cost);
+    let id = max_nomination(&mut c);
+    assert_eq!(c.get_nomination(id).unwrap().nominator, attacker);
+    // 899 spam nominations would now cost the attacker about 5 NEAR, not the contract.
+    assert!(899 * cost > 4 * N);
+}
+
+// Fix 2: rounds of a few milliseconds let the curator walk the threshold to its floor at once,
+// and a far-future close locked the budget for good.
+attack!(instant_rounds_are_refused, "ERR_BAD_PARAMS", |c| {
+    c.config.limits = launch_limits();
+    set(&curator(), 100 * N);
+    c.stoke();
+    let ids = nominate_three(&mut c);
+    set(&curator(), 0);
+    c.create_round(CreateRoundArgs {
+        nomination_ids: ids,
+        reviewer: curator(),
+        open_at_ms: 11,
+        candle_start_ms: 12,
+        backing_close_ms: 13,
+        delivery_deadline_ms: 14,
+        review_deadline_ms: 15,
+        checkpoints: 1,
+    });
+});
+
+#[test]
+fn walking_the_threshold_to_its_floor_takes_fifteen_hour_long_rounds() {
+    let mut c = setup();
+    c.config.limits = launch_limits();
+    launch_rules(&mut c);
+    set(&curator(), 100 * N);
+    c.stoke();
+    let mut t: u64 = 10;
+    let mut rounds = 0;
+    while c.next_threshold > c.config.rules.min_threshold.0 {
+        at(t);
+        let ids = nominate_three(&mut c);
+        set(&curator(), 0);
+        let open = t + 1;
+        let close = open + HOUR;
+        let r = c.create_round(CreateRoundArgs {
+            nomination_ids: ids,
+            reviewer: curator(),
+            open_at_ms: open,
+            candle_start_ms: close - 10 * 60_000,
+            backing_close_ms: close,
+            delivery_deadline_ms: close + HOUR,
+            review_deadline_ms: close + 2 * HOUR,
+            checkpoints: 1,
+        });
+        at(close);
+        set(&user(5), 0);
+        c.select(r);
+        rounds += 1;
+        t = close;
+    }
+    println!("empty rounds to the floor: {rounds}, chain time {} h", t / HOUR);
+    assert_eq!(rounds, 15);
+    assert!(t >= 15 * HOUR);
+}
+
+fn far_round(c: &mut Contract) -> u32 {
+    set(&curator(), 100 * N);
+    c.stoke();
+    let ids = nominate_three(c);
+    set(&curator(), 0);
+    c.create_round(CreateRoundArgs {
+        nomination_ids: ids,
+        reviewer: curator(),
+        open_at_ms: 10,
+        candle_start_ms: 20,
+        backing_close_ms: u64::MAX - 2,
+        delivery_deadline_ms: u64::MAX - 1,
+        review_deadline_ms: u64::MAX,
+        checkpoints: 12,
+    })
+}
+
+attack!(a_round_cannot_close_in_the_far_future, "ERR_BAD_PARAMS", |c| {
+    far_round(&mut c);
+});
+
+attack!(a_round_cannot_open_in_the_far_future, "ERR_BAD_PARAMS", |c| {
+    c.config.limits = launch_limits();
+    set(&curator(), 100 * N);
+    c.stoke();
+    let ids = nominate_three(&mut c);
+    set(&curator(), 0);
+    let open = 3 * DAY;
+    c.create_round(CreateRoundArgs {
+        nomination_ids: ids,
+        reviewer: curator(),
+        open_at_ms: open,
+        candle_start_ms: open + 2 * HOUR,
+        backing_close_ms: open + 3 * HOUR,
+        delivery_deadline_ms: open + 4 * HOUR,
+        review_deadline_ms: open + 5 * HOUR,
+        checkpoints: 1,
+    });
+});
+
+attack!(new_refuses_invalid_limits, "ERR_BAD_PARAMS", |c| {
+    let _ = c.get_round_count();
+    let mut bad = limits();
+    bad.min_backing_ms = bad.max_backing_ms + 1;
+    Contract::new(curator(), dist(), U128(E), U128(E), U128(E), DAY, U128(E), rules(), bad);
+});
+
+#[test]
+fn the_planned_round_schedules_fit_the_launch_limits() {
+    let l = launch_limits();
+    let now = 1_000_000;
+    // Round 1 and 2: open in 2 min, 12 h backing with a 2 h candle, 24 h delivery, 12 h review.
+    let open = now + 120_000;
+    assert!(l.allow(now, open, open + 10 * HOUR, open + 12 * HOUR, open + 36 * HOUR, open + 48 * HOUR));
+    // Judging week: 14 Nov to about 17 Nov, a 6 h candle, a day each for delivery and review.
+    assert!(l.allow(now, open, open + 66 * HOUR, open + 72 * HOUR, open + 96 * HOUR, open + 120 * HOUR));
+}
+
+// Disclosed in the README's Limits, not fixed: equalling the leader forces a tie, which refunds
+// the attacker in full and fails the round.
+fn tie_veto(k: u8) {
+    let mut c = setup();
+    let r = round(&mut c);
+    let attacker = user(7);
+    fund(&mut c, &user(0), 30_000 * E);
+    fund(&mut c, &attacker, 30_000 * E);
+    let threshold = c.next_threshold;
+    at(OPEN);
+    commit(&mut c, &user(0), r, 0, 20_000 * E);
+    commit(&mut c, &attacker, r, 1, 20_000 * E);
+    at(CANDLE + 350);
+    commit(&mut c, &user(0), r, 0, 5_000 * E);
+    at(CANDLE + 360);
+    commit(&mut c, &attacker, r, 1, 5_000 * E);
+    at(CLOSE);
+    seed(seed_where(r, 12, |x| x == k));
+    set(&user(5), 0);
+    c.select(r);
+    let rd = c.rounds.get(r).unwrap().clone();
+    assert_eq!(rd.drawn_checkpoint, Some(k));
+    assert_eq!(rd.status, RoundStatus::FailedSelection);
+    assert_eq!(c.total_burned, 0);
+    set(&attacker, 0);
+    c.settle(r, attacker.clone());
+    assert_eq!(bal(&c, &attacker), 30_000 * E, "the attacker loses nothing");
+    assert_eq!(c.next_threshold, threshold);
+}
+
+#[test]
+fn matching_the_leader_at_every_checkpoint_forces_a_tie_at_no_cost() {
+    for k in [0u8, 2, 3, 11] {
+        tie_veto(k);
+    }
+}
+
+// Low: accept and reject need 1 yoctoNEAR, so a limited function-call key can't decide a round.
+attack!(accept_needs_one_yocto, "Requires attached deposit of exactly 1 yoctoNEAR", |c| {
+    let r = selected_round(&mut c);
+    set(&creator(0), 0);
+    c.submit(r, hash(1), "u".into());
+    set(&curator(), 0);
+    c.accept(r, hash(1));
+});
+
+attack!(reject_needs_one_yocto, "Requires attached deposit of exactly 1 yoctoNEAR", |c| {
+    let r = selected_round(&mut c);
+    set(&creator(0), 0);
+    c.submit(r, hash(1), "u".into());
+    set(&curator(), 0);
+    c.reject(r);
+});

@@ -102,6 +102,7 @@ impl Fx {
                 "faucet_interval_ms": FAUCET_INTERVAL_MS,
                 "nominate_min_ash": (1_000 * EMBER).to_string(),
                 "rules": rules,
+                "limits": test_limits(),
             }))
             .max_gas()
             .transact()
@@ -249,7 +250,7 @@ impl Fx {
         self.advance_to(t.close).await?;
         self.ok(&self.dist, "select", json!({ "round_id": round_id }), 0).await?;
         self.ok(creator, "submit", json!({ "round_id": round_id, "hash": WORK_HASH, "uri": "https://example.test/work" }), 0).await?;
-        self.ok(&self.reviewer, "accept", json!({ "round_id": round_id, "hash": WORK_HASH }), 0).await?;
+        self.ok(&self.reviewer, "accept", json!({ "round_id": round_id, "hash": WORK_HASH }), 1).await?;
         let round = self.round(round_id).await?;
         assert_eq!(round["round"]["status"], "Accepted");
         assert_eq!(round["round"]["payout_state"], "Available");
@@ -258,6 +259,26 @@ impl Fx {
         assert_eq!(payout, 5 * NEAR / 4);
         Ok((round_id, payout, winner, loser))
     }
+}
+
+/// Short windows so sandbox rounds take minutes. Launch values are in scripts/testnet.ts.
+fn test_limits() -> Value {
+    json!({
+        "max_lead_ms": 86_400_000u64, "min_backing_ms": 1_000, "max_backing_ms": 2_592_000_000u64,
+        "min_candle_ms": 1_000, "max_candle_ms": 86_400_000u64, "min_delivery_ms": 1_000,
+        "max_delivery_ms": 86_400_000u64, "min_review_ms": 1_000, "max_review_ms": 86_400_000u64,
+    })
+}
+
+/// The launch windows from scripts/testnet.ts, for the keyless deployment's exact genesis.
+fn launch_limits() -> Value {
+    let hour = 3_600_000u64;
+    let day = 24 * hour;
+    json!({
+        "max_lead_ms": 2 * day, "min_backing_ms": hour, "max_backing_ms": 7 * day,
+        "min_candle_ms": 600_000u64, "max_candle_ms": day, "min_delivery_ms": hour,
+        "max_delivery_ms": 3 * day, "min_review_ms": hour, "max_review_ms": 3 * day,
+    })
 }
 
 async fn make_account(root: &Account, name: &str, near: u128) -> Result<Account> {
@@ -527,7 +548,7 @@ async fn worst_case_round_gas_and_storage() -> Result<()> {
 
     let creator = &creators[4];
     let submit = fx.ok(creator, "submit", json!({ "round_id": round_id, "hash": WORK_HASH, "uri": "u".repeat(256) }), 0).await?;
-    let accept = fx.ok(&fx.reviewer, "accept", json!({ "round_id": round_id, "hash": WORK_HASH }), 0).await?;
+    let accept = fx.ok(&fx.reviewer, "accept", json!({ "round_id": round_id, "hash": WORK_HASH }), 1).await?;
     let claim = fx.ok(&fx.dist, "claim_payout", json!({ "round_id": round_id }), 0).await?;
     let callback = claim
         .receipt_outcomes()
@@ -746,7 +767,7 @@ async fn simulator_replay_matches_wasm() -> Result<()> {
             match outcome.as_str() {
                 "accepted" => {
                     fx.ok(creator, "submit", submit, 0).await?;
-                    fx.ok(&fx.reviewer, "accept", json!({ "round_id": round_id, "hash": WORK_HASH }), 0).await?;
+                    fx.ok(&fx.reviewer, "accept", json!({ "round_id": round_id, "hash": WORK_HASH }), 1).await?;
                     fx.ok(&fx.dist, "claim_payout", id, 0).await?;
                     fx.settle_receipts().await?;
                     paid += u(&rec["payout"]);
@@ -754,7 +775,7 @@ async fn simulator_replay_matches_wasm() -> Result<()> {
                 }
                 "rejected" => {
                     fx.ok(creator, "submit", submit, 0).await?;
-                    fx.ok(&fx.reviewer, "reject", id, 0).await?;
+                    fx.ok(&fx.reviewer, "reject", id, 1).await?;
                     "Rejected"
                 }
                 "missed" => {
@@ -826,6 +847,7 @@ async fn keyless_deploy_in_one_transaction() -> Result<()> {
             "initial_threshold": (10_000 * EMBER).to_string(), "min_threshold": (1_000 * EMBER).to_string(),
             "up_bps": 10_500, "down_bps": 8_500, "target_multiple": 4,
         },
+        "limits": launch_limits(),
     });
 
     let res = parent

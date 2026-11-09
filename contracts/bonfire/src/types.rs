@@ -19,6 +19,8 @@ pub struct Config {
     pub initial_supply: U128,
     /// The rules that compute every round's budget, threshold and target.
     pub rules: HearthRules,
+    /// The shortest and longest each round window may be. Fixed at genesis.
+    pub limits: RoundLimits,
 }
 
 /// Fixed at `new`. A round's budget, threshold and target come only from these and from
@@ -55,6 +57,51 @@ impl HearthRules {
             && self.target_multiple >= 1
             && initial_supply.checked_mul(self.up_bps as u128).is_some()
             && initial_supply.checked_mul(self.target_multiple as u128).is_some()
+    }
+}
+
+/// Bounds on every round's time windows, in milliseconds. Minimums stop the curator from
+/// running back-to-back instant rounds to walk the threshold down; maximums stop a round from
+/// locking its budget for an unbounded time. Set at genesis so tests can use short ones.
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug)]
+pub struct RoundLimits {
+    /// Longest wait from `create_round` to `open_at_ms`.
+    pub max_lead_ms: u64,
+    /// Bounds on `backing_close_ms - open_at_ms` (the whole backing period, candle included).
+    pub min_backing_ms: u64,
+    pub max_backing_ms: u64,
+    /// Bounds on `backing_close_ms - candle_start_ms`.
+    pub min_candle_ms: u64,
+    pub max_candle_ms: u64,
+    /// Bounds on `delivery_deadline_ms - backing_close_ms`.
+    pub min_delivery_ms: u64,
+    pub max_delivery_ms: u64,
+    /// Bounds on `review_deadline_ms - delivery_deadline_ms`.
+    pub min_review_ms: u64,
+    pub max_review_ms: u64,
+}
+
+impl RoundLimits {
+    pub fn is_valid(&self) -> bool {
+        let pair = |min: u64, max: u64| min > 0 && min <= max;
+        pair(self.min_backing_ms, self.max_backing_ms)
+            && pair(self.min_candle_ms, self.max_candle_ms)
+            && pair(self.min_delivery_ms, self.max_delivery_ms)
+            && pair(self.min_review_ms, self.max_review_ms)
+            && self.min_candle_ms < self.max_backing_ms
+            && self.max_lead_ms > 0
+    }
+
+    /// Whether a round with these timestamps, created at `now`, fits every bound. The caller
+    /// has already checked that the timestamps are in order.
+    pub fn allow(&self, now: u64, open: u64, candle: u64, close: u64, delivery: u64, review: u64) -> bool {
+        let within = |d: u64, min: u64, max: u64| d >= min && d <= max;
+        open - now <= self.max_lead_ms
+            && within(close - open, self.min_backing_ms, self.max_backing_ms)
+            && within(close - candle, self.min_candle_ms, self.max_candle_ms)
+            && within(delivery - close, self.min_delivery_ms, self.max_delivery_ms)
+            && within(review - delivery, self.min_review_ms, self.max_review_ms)
     }
 }
 

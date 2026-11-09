@@ -36,6 +36,7 @@ impl Contract {
     /// All parameters are frozen from this point.
     pub fn create_round(&mut self, args: CreateRoundArgs) -> u32 {
         require!(env::predecessor_account_id() == self.config.curator, err::NOT_CURATOR);
+        require!(self.funded_round.is_none(), err::ROUND_OPEN);
         let now = env::block_timestamp_ms();
         let n = args.nomination_ids.len();
         require!((MIN_MISSIONS..=MAX_MISSIONS).contains(&n), err::BAD_PARAMS);
@@ -46,6 +47,17 @@ impl Contract {
                 && args.candle_start_ms < args.backing_close_ms
                 && args.backing_close_ms < args.delivery_deadline_ms
                 && args.delivery_deadline_ms < args.review_deadline_ms,
+            err::BAD_PARAMS
+        );
+        require!(
+            self.config.limits.allow(
+                now,
+                args.open_at_ms,
+                args.candle_start_ms,
+                args.backing_close_ms,
+                args.delivery_deadline_ms,
+                args.review_deadline_ms,
+            ),
             err::BAD_PARAMS
         );
         let rules = &self.config.rules;
@@ -105,6 +117,7 @@ impl Contract {
         };
         emit("round_created", json!({ "round": &round }));
         self.rounds.push(round);
+        self.funded_round = Some(round_id);
         round_id
     }
 
@@ -112,6 +125,8 @@ impl Contract {
     pub fn cancel_round(&mut self, round_id: u32) {
         require!(env::predecessor_account_id() == self.config.curator, err::NOT_CURATOR);
         let now = env::block_timestamp_ms();
+        // Only one round is ever Funded, and a cancel that fails below reverts this.
+        self.funded_round = None;
         let r = self.round_mut(round_id);
         require!(r.status == RoundStatus::Funded, err::WRONG_STATUS);
         require!(now < r.open_at_ms, err::WRONG_STATUS);
@@ -236,6 +251,8 @@ impl Contract {
     pub fn select(&mut self, round_id: u32) {
         let now = env::block_timestamp_ms();
         let seed = env::random_seed_array();
+        // Only one round is ever Funded, and a select that fails below reverts this.
+        self.funded_round = None;
         let r = self.round_mut(round_id);
         require!(r.status == RoundStatus::Funded, err::WRONG_STATUS);
         require!(phase_of(r, now) == Phase::Closed, err::STILL_BURNING);
@@ -315,10 +332,13 @@ impl Contract {
 
     /// Reviewer accepts the exact submitted hash: burns the counted winning escrow and makes
     /// the payout claimable by the creator.
+    /// Attach exactly 1 yoctoNEAR, so a limited function-call key can't do it.
+    #[payable]
     pub fn accept(&mut self, round_id: u32, hash: String) {
         let now = env::block_timestamp_ms();
         let r = self.round_mut(round_id);
         require!(env::predecessor_account_id() == r.reviewer, err::NOT_REVIEWER);
+        near_sdk::assert_one_yocto();
         require!(r.status == RoundStatus::AwaitingReview, err::WRONG_STATUS);
         require!(now < r.review_deadline_ms, err::DEADLINE_PASSED);
         require!(r.submission.as_ref().unwrap().hash == hash, err::HASH_MISMATCH);
@@ -341,10 +361,13 @@ impl Contract {
     }
 
     /// Reviewer rejects before the review deadline. Winning escrow becomes refundable.
+    /// Attach exactly 1 yoctoNEAR, so a limited function-call key can't do it.
+    #[payable]
     pub fn reject(&mut self, round_id: u32) {
         let now = env::block_timestamp_ms();
         let r = self.round_mut(round_id);
         require!(env::predecessor_account_id() == r.reviewer, err::NOT_REVIEWER);
+        near_sdk::assert_one_yocto();
         require!(r.status == RoundStatus::AwaitingReview, err::WRONG_STATUS);
         require!(now < r.review_deadline_ms, err::DEADLINE_PASSED);
         r.status = RoundStatus::Rejected;

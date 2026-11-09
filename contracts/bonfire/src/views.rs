@@ -48,6 +48,8 @@ pub struct Audit {
     pub claims_available: U128,
     pub claims_pending: U128,
     pub deposits_held: U128,
+    /// hearth_pool + reserved_total + claims_available + deposits_held. A pending claim is
+    /// excluded because its NEAR has already left with the transfer.
     pub obligations: U128,
     pub account_balance: U128,
     pub storage_locked: U128,
@@ -172,7 +174,10 @@ impl Contract {
         let supply = self.token.total_supply;
         let initial = self.config.initial_supply.0;
         let contract_ft = self.token.accounts.get(&me).unwrap_or(0);
-        let obligations = self.hearth_pool + self.reserved_total + self.claims_available + self.claims_pending + self.deposits_held;
+        // A pending claim's NEAR left with its transfer receipt, so the balance no longer holds
+        // it. Counting it would read near_ok false until the callback lands. If the transfer
+        // fails, the refund and the callback restore both sides together.
+        let obligations = self.hearth_pool + self.reserved_total + self.claims_available + self.deposits_held;
         let balance = env::account_balance().as_yoctonear();
         let locked = env::storage_byte_cost().as_yoctonear() * env::storage_usage() as u128;
         let need = obligations + locked;

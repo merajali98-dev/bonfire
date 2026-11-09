@@ -18,7 +18,8 @@ A claim marked **pending** depends on something not done yet and must not be mad
 | A payout is paid once; a failed transfer can be retried. | sandbox `payout_transfer_pays_creator_exactly_once`, `payout_to_deleted_account_restores_available_and_can_retry` | pass |
 | Settling is permissionless and can't pay twice. | unit `cannot_settle_twice`, `cannot_settle_before_selection` | `ERR_NOTHING_TO_SETTLE`, `ERR_NOT_SELECTED` |
 | Ash comes only from burning in accepted rounds, and nominating needs Ash. | unit `ash_grants_nomination_right`, `nominating_without_ash_is_refused` | pass, `ERR_INSUFFICIENT_ASH` |
-| Tokens and NEAR always reconcile. | unit `randomized_rounds_conserve_tokens_and_near`, `genesis_reconciles`; view `audit` | pass; `supply_ok`, `escrow_ok`, `near_ok` all `true` |
+| Tokens and NEAR always reconcile. A nomination's deposit is kept to pay its storage, so it adds to the balance exactly what it locks. A pending payout is excluded from obligations because its NEAR has already left with the transfer. | unit `randomized_rounds_conserve_tokens_and_near`, `genesis_reconciles`; view `audit` | pass; `supply_ok`, `escrow_ok`, `near_ok` all `true` |
+| Only the reviewer, with a full-access key, can accept or reject: both need 1 yoctoNEAR attached. | unit `accept_needs_one_yocto`, `reject_needs_one_yocto` | `Requires attached deposit of exactly 1 yoctoNEAR` |
 
 ## Money and rules
 
@@ -26,11 +27,19 @@ A claim marked **pending** depends on something not done yet and must not be mad
 | --- | --- | --- |
 | The Hearth has no withdrawal method; NEAR leaves only as a payout for accepted work. | The contract's method list in `contracts/bonfire/src`; site page "Steal the fire" (`withdraw_hearth`) | no such method; `MethodNotFound` |
 | Nothing can mint after genesis. | `contracts/bonfire/src/lib.rs` (`new` mints once); "Steal the fire" (`mint`) | `MethodNotFound` |
-| No call can set a round's budget, threshold or target. | unit `round_args_refuse_budget_threshold_and_target`; sandbox `curator_cannot_set_a_rounds_money_terms` | `Failed to deserialize input from JSON` |
+| No call can set a round's budget, threshold or target. The curator still influences the threshold by choosing when rounds run, since an empty round lowers it. Only one round can be funded at a time and each has minimum windows, so reaching the floor takes at least 15 hour-long rounds. | unit `round_args_refuse_budget_threshold_and_target`, `walking_the_threshold_to_its_floor_takes_fifteen_hour_long_rounds`, `instant_rounds_are_refused`, `a_second_round_cannot_open_while_one_is_funded`; sandbox `curator_cannot_set_a_rounds_money_terms` | `Failed to deserialize input from JSON`; 15 rounds; `ERR_BAD_PARAMS`; `ERR_ROUND_OPEN` |
+| A round can't lock its budget indefinitely: every window has a maximum. | unit `a_round_cannot_close_in_the_far_future`, `a_round_cannot_open_in_the_far_future` | `ERR_BAD_PARAMS` |
+| A nomination by anyone but the curator pays for its own storage, so nominating can't drain the contract's reserve or the Hearth. | unit `an_ash_holder_cannot_nominate_without_paying_for_storage`, `a_deposit_one_yocto_short_of_the_storage_is_refused`, `a_nomination_paid_for_exactly_leaves_the_reserve_untouched` | `ERR_DEPOSIT`; 556 bytes for the largest nomination |
 | Each round's budget is 25% of the Hearth, its target is 4× its threshold, and the threshold moves ×1.05 after a winner and ×0.85 when nothing qualifies, never below 1,000 EMBER. | unit `budget_is_a_share_of_the_pool_at_creation`, `a_winner_raises_the_next_threshold_and_target`, `nothing_reaching_threshold_lowers_it`, `threshold_never_falls_below_the_floor`; view `get_config` | pass; `rules` as stated |
 | The rule values came from the simulation. | `npm run simulate` regenerates [docs/simulation.md](docs/simulation.md); CI fails if it is stale; `npm test` (`the deploy script uses the rules the simulator recommends`) | no diff; pass |
 | The simulator's rules match the contract's wasm. | sandbox `simulator_replay_matches_wasm` | `METRIC replay: rounds matched: 8` |
 | A whale that abstains until the threshold halves pays about 84% less per win (8.1 of 20 rounds) in thin crowds. | [docs/simulation.md](docs/simulation.md), "Threshold controller" | as stated |
+
+## Limits shown by tests
+
+| Limit | Proof | Expected |
+| --- | --- | --- |
+| Matching the leader at every candle checkpoint forces a tie, which fails the round and refunds the attacker in full. | unit `matching_the_leader_at_every_checkpoint_forces_a_tie_at_no_cost` | pass |
 
 ## Build and deployment
 

@@ -355,8 +355,24 @@ function genesisArgs(): object {
       down_bps: 8_500,
       target_multiple: 4,
     },
+    // Each window's bounds. A minimum of an hour of backing means walking the threshold from
+    // 10,000 to its floor with empty rounds takes at least 15 hours of rounds.
+    limits: {
+      max_lead_ms: 2 * DAY_MS,
+      min_backing_ms: HOUR_MS,
+      max_backing_ms: 7 * DAY_MS,
+      min_candle_ms: 10 * 60_000,
+      max_candle_ms: DAY_MS,
+      min_delivery_ms: HOUR_MS,
+      max_delivery_ms: 3 * DAY_MS,
+      min_review_ms: HOUR_MS,
+      max_review_ms: 3 * DAY_MS,
+    },
   };
 }
+
+const HOUR_MS = 3_600_000;
+const DAY_MS = 24 * HOUR_MS;
 
 interface RoundPlan {
   nominationIds: number[];
@@ -642,13 +658,13 @@ async function cmdAccept(): Promise<void> {
   const round = await getRound(roundId);
   const hash = round.round.submission?.hash;
   if (!hash) throw new Error("Nothing has been submitted for this round.");
-  await call(opts.as ? who(opts.as) : round.round.reviewer, "accept", { round_id: roundId, hash });
+  await call(opts.as ? who(opts.as) : round.round.reviewer, "accept", { round_id: roundId, hash }, 1n);
 }
 
 async function cmdReject(): Promise<void> {
   const roundId = roundArg(1);
   const round = await getRound(roundId);
-  await call(opts.as ? who(opts.as) : round.round.reviewer, "reject", { round_id: roundId });
+  await call(opts.as ? who(opts.as) : round.round.reviewer, "reject", { round_id: roundId }, 1n);
 }
 
 /** select, expire and claim_payout can be sent by anyone. */
@@ -716,7 +732,7 @@ async function cmdDemo(): Promise<void> {
   await call(m.accounts.dist, "select", { round_id: roundId });
   await submitWork(roundId, join(ROOT, "docs/briefs/demo.md"), REPO_BLOB + "docs/briefs/demo.md");
   const round = await getRound(roundId);
-  await call(round.round.reviewer, "accept", { round_id: roundId, hash: round.round.submission?.hash ?? "" });
+  await call(round.round.reviewer, "accept", { round_id: roundId, hash: round.round.submission?.hash ?? "" }, 1n);
   await call(m.accounts.dist, "claim_payout", { round_id: roundId });
   await sleep(4_000);
   for (const account of [m.accounts.backer1, m.accounts.backer2]) {

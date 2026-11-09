@@ -14,6 +14,21 @@ export interface Config {
   nominate_min_ash: U128;
   initial_supply: U128;
   rules: HearthRules;
+  /** Absent on the development deployment, which predates round limits. */
+  limits?: RoundLimits;
+}
+
+/** Fixed at init. The shortest and longest each round window may be, in milliseconds. */
+export interface RoundLimits {
+  max_lead_ms: number;
+  min_backing_ms: number;
+  max_backing_ms: number;
+  min_candle_ms: number;
+  max_candle_ms: number;
+  min_delivery_ms: number;
+  max_delivery_ms: number;
+  min_review_ms: number;
+  max_review_ms: number;
 }
 
 /** Fixed at init. Every round's budget, threshold and target are computed from these. */

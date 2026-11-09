@@ -29,6 +29,7 @@ export const ERROR_MESSAGES = {
   ERR_NOT_REGISTERED: "This account is not registered with EMBER yet.",
   ERR_NOMINATION_USED: "That nomination has already been used in a round.",
   ERR_NOT_CONSENTED: "The creator has not consented to this nomination.",
+  ERR_ROUND_OPEN: "Another round is still open. Only one round can be funded at a time.",
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_MESSAGES;
