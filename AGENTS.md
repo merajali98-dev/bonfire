@@ -19,6 +19,7 @@ npm test                  # simulator rules vs shared fixtures, deploy rules vs 
 npm run simulate && git diff --exit-code docs/simulation.md packages/simulator/reports
 node scripts/res.ts check # res/bonfire.wasm is the recorded build and the contract hasn't changed since
 npm run observe           # read-only checks of the deployed contract over public RPC, no key
+npm run rules             # every rule the final contract was initialized with, read live, no key
 ```
 
 `npm run observe` prints `HELD`, `FAILED` or `UNAVAILABLE` per claim with the observed value, and exits non-zero unless every claim holds. On the keyless final deployment `fire.bonfire-hearth.testnet` all 5 claims hold. `npm run observe -- --deployment dev` checks the development deployment, which has an access key and older code, so 2 of 5 claims hold there by design.

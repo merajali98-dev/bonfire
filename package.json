@@ -13,6 +13,7 @@
     "simulate": "npm run report -w @bonfire/simulator",
     "testnet": "node --disable-warning=ExperimentalWarning scripts/testnet.ts",
     "observe": "node --disable-warning=ExperimentalWarning scripts/observe.ts",
+    "rules": "node --disable-warning=ExperimentalWarning scripts/rules.ts",
     "verify": "node --disable-warning=ExperimentalWarning scripts/verify.ts"
   },
   "devDependencies": {

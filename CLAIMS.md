@@ -31,9 +31,19 @@ A claim marked **pending** depends on something not done yet and must not be mad
 | A round can't lock its budget indefinitely: every window has a maximum. | unit `a_round_cannot_close_in_the_far_future`, `a_round_cannot_open_in_the_far_future` | `ERR_BAD_PARAMS` |
 | A nomination by anyone but the curator pays for its own storage, so nominating can't drain the contract's reserve or the Hearth. | unit `an_ash_holder_cannot_nominate_without_paying_for_storage`, `a_deposit_one_yocto_short_of_the_storage_is_refused`, `a_nomination_paid_for_exactly_leaves_the_reserve_untouched` | `ERR_DEPOSIT`; 556 bytes for the largest nomination |
 | Each round's budget is 25% of the Hearth, its target is 4× its threshold, and the threshold moves ×1.05 after a winner and ×0.85 when nothing qualifies, never below 1,000 EMBER. | unit `budget_is_a_share_of_the_pool_at_creation`, `a_winner_raises_the_next_threshold_and_target`, `nothing_reaching_threshold_lowers_it`, `threshold_never_falls_below_the_floor`; view `get_config` | pass; `rules` as stated |
+| Anyone can read every rule of the final contract `fire.bonfire-hearth.testnet`, and nothing can change them. | `npm run rules`; `near contract call-function as-read-only fire.bonfire-hearth.testnet get_config json-args {} network-config testnet now`; `npm run observe` (no access keys, rules match the simulation) | every rule printed, values as in the README; `5 of 5 held` |
 | The rule values came from the simulation. | `npm run simulate` regenerates [docs/simulation.md](docs/simulation.md); CI fails if it is stale; `npm test` (`the deploy script uses the rules the simulator recommends`) | no diff; pass |
 | The simulator's rules match the contract's wasm. | sandbox `simulator_replay_matches_wasm` | `METRIC replay: rounds matched: 8` |
 | A whale that abstains until the threshold halves pays about 84% less per win (8.1 of 20 rounds) in thin crowds. | [docs/simulation.md](docs/simulation.md), "Threshold controller" | as stated |
+
+## Sybil resistance
+
+| Claim | Proof | Expected |
+| --- | --- | --- |
+| Splitting EMBER across wallets gains no weight. | `npm test` (`splitting a whale across wallets gains no weight`); sandbox `simulator_replay_matches_wasm` ties the simulator's rules to the wasm | same winners in every seed |
+| The faucet gives one claim per account per interval, registering new accounts for a storage deposit. | unit `faucet_cooldown_enforced`, `faucet_registers_and_respects_interval`; sandbox `storage_deposit_and_faucet_flow` | `ERR_FAUCET_COOLDOWN`; pass |
+| The faucet pool is fixed at genesis: 1,000 EMBER per claim, once a day, from 150,000 EMBER. | `npm run rules`; view `audit` (`faucet_remaining`, `supply_ok`) | `faucet_amount` 1,000 EMBER, `faucet_interval_ms` 86,400,000; `faucet_remaining` only falls |
+| Faucet farming drains the pool fast and concentrates Ash. | [docs/simulation.md](docs/simulation.md), "Scenarios" (`Faucet farming`) | 60 wallets empty it around day 2 and hold 34% of Ash |
 
 ## Limits shown by tests
 

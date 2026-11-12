@@ -6,7 +6,9 @@ Put your EMBER behind the mission you want made. If it wins and the work is acce
 
 Built at NEAR HACKATHON (Memecoins With Mechanics; Social Money). Testnet only.
 
-**Demo video:** [deliveries/round-2/bonfire-demo.mp4](deliveries/round-2/bonfire-demo.mp4) (2:57). BONFIRE commissioned it: it won Round 2 on the final contract and was accepted by its exact hash, burning 12,350 EMBER. It also plays on the site's Made page.
+**The contract:** `fire.bonfire-hearth.testnet`, the final deployment. It has never had an access key, so no one can change its code or its rules, and it is the contract the live site reads. `npm run observe` checks this with no key, and `npm run rules` prints every rule it was initialized with. An earlier development deployment, `bonfire-meraj-contract.testnet`, has an access key and older code. Only the sticker pack round on the site's Made page comes from it.
+
+**Demo video:** [deliveries/round-2/bonfire-demo.mp4](deliveries/round-2/bonfire-demo.mp4) (2:57), also [posted on X](https://x.com/merajali206/status/2119992632571232634). BONFIRE commissioned it: it won Round 2 on the final contract `fire.bonfire-hearth.testnet` and was accepted by its exact hash, burning 12,350 EMBER there. It also plays on the site's Made page.
 
 ## Try it in five minutes
 
@@ -22,14 +24,14 @@ Automated reviewers: start with [AGENTS.md](AGENTS.md). Every claim and its proo
 
 | Part | State |
 | --- | --- |
-| `contracts/bonfire` — EMBER token, Hearth, nominations, rounds, candle close, matching payout, Ash, settlement | Implemented; unit and sandbox tests passing in CI; running as the development deployment below |
-| `packages/protocol` — TypeScript types for the contract views and error codes | Implemented |
-| `scripts/testnet.ts` — deploy, seed, run and settle rounds from the CLI ([runbook](scripts/README.md)) | Used for the development deployment on testnet |
-| `packages/simulator` — seeded 60-day scenarios, backer strategies and rule sweeps ([report](docs/simulation.md)) | Implemented; rule math shared with the contract through fixtures, and one seeded run replayed against the wasm in CI |
-| Development deployment — `bonfire-meraj-contract.testnet` (has an access key; every account is a team-run demo actor) | Two rounds accepted on testnet: a labeled demo round (15,000 EMBER burned, 0.75 test NEAR paid) and the EMBER sticker pack, commissioned and delivered after backing closed (15,000 EMBER burned, 0.7615 test NEAR paid; [delivery](deliveries/round-1)). All backers were team accounts |
-| `apps/web` — live round, guest account or wallet sign-in, faucet, commit, My embers with settle, share cards rendered from chain data, a local Practice floor, a Made page showing delivered work checked against its on-chain hash, a Ledger page with the proof checks, supply, burn log and Hearth, and a "Try to steal the fire" page where visitors send forbidden transactions from their own account and see the real refusal, and a Simulator page charting the 60-day scenarios ([site](https://bonfire-opal.vercel.app), [setup](apps/web/README.md)) | Live, reading the final keyless deployment since 9 Nov; signed commits confirmed on testnet from a guest on a phone and from a wallet. The Made page reads the sticker round from the development deployment |
+| **Final keyless deployment — `fire.bonfire-hearth.testnet`** (the contract the site reads) | Live on testnet since 9 Nov: created, funded, deployed with `res/bonfire.wasm` and initialized in [one transaction](https://testnet.nearblocks.io/txns/GNnnst1azSGwCVDxtMc12wLZR6GADyQ2JUhTziJqJjnA) with no AddKey, so it has never had an access key. `npm run observe` holds 5 of 5. Its first round (Round 2) ran on 9 Nov and was accepted on this contract: the demo video won with 12,350 EMBER counted, was made after backing closed, and was accepted by its exact hash. 12,350 EMBER burned and 0.6175 test NEAR went to the creator ([delivery](deliveries/round-2)). Backers were team accounts and one guest created for the recording. Round 3 is open until 13 Nov 22:26 UTC |
 | `res/bonfire.wasm` — the deployable build, made reproducibly in CI | Committed with its SHA-256 and source commit; this is the frozen contract running on the final deployment |
-| Final keyless deployment — `fire.bonfire-hearth.testnet` | Live on testnet since 9 Nov: created, funded, deployed with `res/bonfire.wasm` and initialized in [one transaction](https://testnet.nearblocks.io/txns/GNnnst1azSGwCVDxtMc12wLZR6GADyQ2JUhTziJqJjnA) with no AddKey, so it has never had an access key. `npm run observe` holds 5 of 5. Its first round (Round 2) ran on 9 Nov: the demo video won with 12,350 EMBER counted, was made after backing closed, and was accepted by its exact hash. 12,350 EMBER burned and 0.6175 test NEAR went to the creator ([delivery](deliveries/round-2)). Backers were team accounts and one guest created for the recording. Round 3 is open until 13 Nov 22:26 UTC |
+| `contracts/bonfire` — EMBER token, Hearth, nominations, rounds, candle close, matching payout, Ash, settlement | Implemented; unit and sandbox tests passing in CI; built into `res/bonfire.wasm` and running on the final deployment |
+| `apps/web` — live round, guest account or wallet sign-in, faucet, commit, My embers with settle, share cards rendered from chain data, a local Practice floor, a Made page showing delivered work checked against its on-chain hash, a Ledger page with the proof checks, supply, burn log and Hearth, and a "Try to steal the fire" page where visitors send forbidden transactions from their own account and see the real refusal, and a Simulator page charting the 60-day scenarios ([site](https://bonfire-opal.vercel.app), [setup](apps/web/README.md)) | Live, reading the final keyless deployment since 9 Nov; signed commits confirmed on testnet from a guest on a phone and from a wallet. Only the sticker pack on the Made page is read from the development deployment, where that round ran |
+| `packages/simulator` — seeded 60-day scenarios, backer strategies and rule sweeps ([report](docs/simulation.md)) | Implemented; rule math shared with the contract through fixtures, and one seeded run replayed against the wasm in CI |
+| `packages/protocol` — TypeScript types for the contract views and error codes | Implemented |
+| `scripts/testnet.ts` — deploy, seed, run and settle rounds from the CLI ([runbook](scripts/README.md)) | Used for both deployments on testnet, including the final deployment's one-transaction deploy |
+| Development deployment — `bonfire-meraj-contract.testnet` (has an access key and older code; not the final contract; every account is a team-run demo actor) | Used before the final deployment existed. Two rounds accepted there: a labeled demo round (15,000 EMBER burned, 0.75 test NEAR paid) and the EMBER sticker pack, commissioned and delivered after backing closed (15,000 EMBER burned, 0.7615 test NEAR paid; [delivery](deliveries/round-1)). All backers were team accounts |
 
 Claims in this README are limited to what the repository currently contains.
 
@@ -57,7 +59,7 @@ cd contracts/bonfire && cargo near build reproducible-wasm
 sha256sum target/near/bonfire.wasm   # compare with res/bonfire.wasm.sha256
 ```
 
-The development deployment was built before this and runs different bytes. The final deployment is planned to use `res/bonfire.wasm`, rebuilt from the frozen contract if anything changes before then.
+The final deployment `fire.bonfire-hearth.testnet` runs exactly `res/bonfire.wasm`: `npm run observe` compares its on-chain code hash with this file. The development deployment was built before this and runs different bytes.
 
 ### Sandbox tests
 
@@ -80,6 +82,20 @@ npm run observe -- --deployment dev    # the development deployment
 
 `observe` needs only Node 24 and public RPC. It checks that the deployed code hash equals `res/bonfire.wasm`, that the contract account has no access keys, that one transaction created, funded, deployed and initialized it with no AddKey, that the rules match the simulation, and that `audit()` reconciles. Each claim prints `HELD`, `FAILED` or `UNAVAILABLE` with what it observed, and anything but all `HELD` exits non-zero. On the keyless deployment all 5 hold. On the development deployment 2 of 5 hold, because it has an access key and older code.
 
+### Read every rule from the contract
+
+```sh
+npm run rules                          # every rule of fire.bonfire-hearth.testnet, read live, with what it means
+```
+
+It calls the contract's `get_config`, `get_next_round_terms` and `audit` views over public RPC and prints each value: supply, faucet amount and interval, the Ash needed to nominate, budget share, threshold start, floor and steps, target multiple, every time window, and the curator. It needs only Node 24 and no key. The raw config is a single view call with [NEAR CLI](https://github.com/near/near-cli-rs) too:
+
+```sh
+near contract call-function as-read-only fire.bonfire-hearth.testnet get_config json-args {} network-config testnet now
+```
+
+Amounts are in the smallest unit: EMBER has 18 decimals and NEAR has 24. The contract has no method that writes its config, and with no access key its code can't be replaced, so these values are final.
+
 ## How a round's terms are set
 
 The contract computes every round's money terms from rules fixed at initialization. The `create_round` call refuses any budget, threshold or target passed to it.
@@ -91,7 +107,7 @@ The contract computes every round's money terms from rules fixed at initializati
 
 The curator still chooses which consented missions enter a round, its time windows and its reviewer, and the reviewer judges the work.
 
-The rule values come from the [simulation report](docs/simulation.md), and the development deployment runs them:
+The rule values come from the [simulation report](docs/simulation.md), and the final deployment `fire.bonfire-hearth.testnet` runs them (`npm run rules` prints them from the contract):
 
 | Rule | Value |
 | --- | --- |
@@ -101,7 +117,25 @@ The rule values come from the [simulation report](docs/simulation.md), and the d
 | Target (`target_multiple`) | 4 × the threshold |
 | Starting threshold and floor | 10,000 EMBER and 1,000 EMBER |
 
-The ×1.05 / ×0.85 pair scored 0.825 in the controller sweep against 0.854 for the next eligible pair, so the choice is a judgment call rather than a clear win. Run `npm run simulate` to regenerate the report and `npm test` for its checks; both need only Node 24. A test fails if the deploy script's values differ from the simulator's. The values are not final until the frozen deployment.
+The ×1.05 / ×0.85 pair scored 0.825 in the controller sweep against 0.854 for the next eligible pair, so the choice is a judgment call rather than a clear win. Run `npm run simulate` to regenerate the report and `npm test` for its checks; both need only Node 24. A test fails if the deploy script's values differ from the simulator's, and `npm run observe` fails if the deployed contract's rules differ from the simulation's. They are final: the keyless contract can't change them.
+
+## Sybil resistance
+
+Sybil resistance means stopping one person from acting as many. Here is what BONFIRE does and where it stops working. `npm run rules` prints every contract value used below.
+
+- **Weight is EMBER, not accounts.** Mission tallies, the creator's payout and Ash all count EMBER, and each depends only on how much EMBER there is, not on how many accounts hold it. Splitting a balance across many accounts adds nothing, so the usual payoff from fake accounts, extra votes per head, doesn't exist. In the simulation, one whale and the same wealth split across 10 wallets pick the same winners in every seed (test `splitting a whale across wallets gains no weight`).
+- **The only free EMBER is the faucet, and it is capped.** It gives 1,000 EMBER per claim, one claim per account per day (`ERR_FAUCET_COOLDOWN`), from a pool of 150,000 EMBER fixed at genesis (`ERR_FAUCET_EMPTY` once it runs out). Nothing can mint more. A first claim also pays the NEP-145 storage deposit to register the account.
+- **Farmed EMBER does nothing until it burns.** EMBER behind a mission burns only when the work is accepted, so a farmer who wins a round has paid for real work with what they farmed. Turning farmed EMBER into NEAR would need a mission whose creator is the farmer to enter a round, which the curator decides, and its work to be accepted, which the reviewer decides.
+- **Ash can't be farmed without burning.** Ash comes only from burned EMBER, and nominating a mission takes 1,000 Ash.
+- **Guest accounts are rate-limited.** The site creates at most 3 guest accounts per IP address per hour, and 40 per server instance ([`apps/web/api/guest.ts`](apps/web/api/guest.ts)).
+
+Its limits, plainly:
+
+- **Eleven accounts are enough to reach the current threshold.** Eleven fresh accounts claiming once each hold 11,000 EMBER, above the 10,500 EMBER threshold. The pool, 149,000 EMBER left, is about 14 thresholds. A scripted farmer could drain it in a day and decide which mission wins rounds until it runs out. In the [simulation](docs/simulation.md#scenarios), 60 farming wallets empty the faucet around day 2 and end with 34% of all Ash. They still burn that EMBER only for accepted work.
+- **No per-account cap and no minimum account age.** The contract doesn't limit how much one account backs, or how new an account is. The keyless contract was frozen without these rules, and it can't be changed now.
+- **Splitting hides concentration.** Rankings and Ash are per account, so one person's Ash spread over ten accounts looks like ten smaller keepers. In the simulation the same whale's Ash Gini reads 0.52 as one wallet and 0.33 across ten.
+- **The guest limits only slow a script.** They are kept in memory per server instance. Anyone can create testnet accounts directly and call the faucet without the site.
+- **What a launch would need.** A mainnet version would drop the faucet, so every EMBER has to be bought, or gate it behind proof of personhood or an account-age and balance check. These are untested here.
 
 ## Limits
 
@@ -109,7 +143,7 @@ The ×1.05 / ×0.85 pair scored 0.825 in the controller sweep against 0.854 for 
 - **A tie can veto a round for free.** Anyone who matches the leading mission's tally at every candle checkpoint forces a tie whichever checkpoint is drawn. A tie fails the round and refunds everyone, the attacker included, so blocking a round costs no EMBER. It does need as much EMBER as the leader, and it doesn't move the threshold. The tie rule is unchanged; the test `matching_the_leader_at_every_checkpoint_forces_a_tie_at_no_cost` shows it.
 - **The curator still steers the threshold a little.** It chooses when rounds run, and an empty round lowers the next threshold. Only one round can be funded at a time, and backing lasts at least an hour, so walking the threshold from 10,000 EMBER to its 1,000 floor takes at least 15 hour-long empty rounds, in public.
 - **Weight follows EMBER.** Splitting a balance across wallets gains nothing, but amount weighting doesn't stop whales, bought votes, creators backing their own missions, or collusion.
-- **The faucet is farmable.** Testnet accounts are nearly free, so anyone can collect faucet EMBER until the faucet pool runs out.
+- **The faucet is farmable.** Testnet accounts are nearly free, so anyone can collect faucet EMBER until the faucet pool runs out. See [Sybil resistance](#sybil-resistance) for what limits it and what doesn't.
 - **Ash concentrates.** It goes to whoever burns the most, and the right to nominate missions follows it.
 - **There are trusted roles.** The curator chooses which consented nominations enter a round, the round's time windows and its reviewer, and the reviewer judges the work. The curator, creator and reviewer could be the same people or collude.
 - **The candle draw isn't perfectly random.** Users can't preview the seed of the block their `select` lands in, but a block producer could in theory bias it.
